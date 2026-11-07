@@ -1,0 +1,3 @@
+mod board;
+
+fn main() {}
