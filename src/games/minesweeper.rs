@@ -7,11 +7,11 @@ use std::io::{self, Write};
 use std::time::{Duration, Instant};
 
 use crossterm::cursor::MoveTo;
-use crossterm::event::{Event, KeyCode, KeyEvent, KeyEventKind};
+use crossterm::event::{Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
 use crossterm::queue;
 use crossterm::style::{Color, Print, SetBackgroundColor, Stylize};
 
-use crate::board::{Board, DigResult, Status};
+use crate::board::{Board, ChordOutcome, DigResult, Status};
 use crate::term;
 
 pub struct Difficulty {
@@ -71,7 +71,14 @@ impl Game {
             KeyCode::Right if c + 1 < self.board.cols => self.cursor.1 += 1,
             KeyCode::Up if r > 0 => self.cursor.0 -= 1,
             KeyCode::Down if r + 1 < self.board.rows => self.cursor.0 += 1,
-            KeyCode::Char('x' | 'X') => self.dig(),
+            KeyCode::Char('x' | 'X') => {
+                let cell = self.board.cell(r, c);
+                if cell.revealed && cell.adjacent > 0 {
+                    self.chord();
+                } else {
+                    self.dig();
+                }
+            }
             KeyCode::Char('z' | 'Z') => {
                 self.board.toggle_flag(r, c);
             }
@@ -90,6 +97,23 @@ impl Game {
                 self.ended = Some(Instant::now());
             }
             DigResult::Revealed if self.board.status() == Status::Won => {
+                self.board.auto_flag_remaining();
+                self.ended = Some(Instant::now());
+            }
+            _ => {}
+        }
+    }
+
+    /// Chording on a revealed number cell: opens the remaining neighbours
+    /// when the surrounding flag count matches the number.
+    fn chord(&mut self) {
+        let (r, c) = self.cursor;
+        match self.board.chord(r, c) {
+            ChordOutcome::Boomed => {
+                self.board.reveal_all_mines();
+                self.ended = Some(Instant::now());
+            }
+            ChordOutcome::Revealed if self.board.status() == Status::Won => {
                 self.board.auto_flag_remaining();
                 self.ended = Some(Instant::now());
             }
@@ -264,5 +288,34 @@ mod tests {
     fn mmss_formats_as_mm_ss() {
         assert_eq!(mmss(Duration::from_secs(65)), "01:05");
         assert_eq!(mmss(Duration::from_secs(0)), "00:00");
+    }
+
+    #[test]
+    fn x_on_a_number_cell_with_matching_flags_chords() {
+        let diff = &DIFFICULTIES[0];
+        let mut game = Game::new(diff);
+        game.board.plant_mines(&[(0, 0), (0, 2)]);
+        game.board.dig(1, 1);
+        assert_eq!(game.board.cell(1, 1).adjacent, 2);
+        game.board.toggle_flag(0, 0);
+        game.board.toggle_flag(0, 2);
+        game.cursor = (1, 1);
+        let key = KeyEvent::new(KeyCode::Char('x'), KeyModifiers::empty());
+        game.handle_key(key);
+        assert!(game.board.cell(1, 0).revealed, "chord must open neighbours");
+        assert!(game.board.cell(2, 2).revealed);
+        assert!(!game.board.cell(0, 0).revealed, "flagged mines stay hidden");
+    }
+
+    #[test]
+    fn x_on_an_unrevealed_cell_still_digs_normally() {
+        let diff = &DIFFICULTIES[0];
+        let mut game = Game::new(diff);
+        game.board.plant_mines(&[(0, 0), (0, 2)]);
+        game.cursor = (1, 1);
+        let key = KeyEvent::new(KeyCode::Char('x'), KeyModifiers::empty());
+        game.handle_key(key);
+        assert!(game.board.cell(1, 1).revealed);
+        assert_eq!(game.board.status(), Status::InProgress);
     }
 }
