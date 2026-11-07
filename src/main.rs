@@ -1,10 +1,11 @@
+//! Terminal mini games — a hub of small terminal games.
+
 mod board;
 mod games;
+mod menu;
 mod term;
-
-use games::minesweeper;
 
 fn main() -> std::io::Result<()> {
     let _guard = term::TerminalGuard::new()?;
-    minesweeper::run(&minesweeper::DIFFICULTIES[0])
+    menu::run()
 }
