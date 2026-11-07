@@ -63,12 +63,17 @@ fn select(
     footer: &str,
 ) -> io::Result<Option<usize>> {
     let mut sel = 0usize;
+    let mut dirty = true;
     loop {
-        render_list(out, title, entries, sel, footer)?;
+        if dirty {
+            render_list(out, title, entries, sel, footer)?;
+            dirty = false;
+        }
         if let Some(Event::Key(key)) = term::poll_event(term::POLL_MS)? {
             if key.kind != KeyEventKind::Press {
                 continue;
             }
+            dirty = true;
             match key.code {
                 KeyCode::Up => sel = (sel + entries.len() - 1) % entries.len(),
                 KeyCode::Down => sel = (sel + 1) % entries.len(),
