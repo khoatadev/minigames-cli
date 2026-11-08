@@ -200,10 +200,11 @@ impl Game {
         out.flush()
     }
 
-    /// Draws one cell as `tile + gap`: a single coloured character followed
-    /// by a plain space, so cells stay visually separated like the old
-    /// glyph style while tiles keep their colour. Hidden cells are dark-blue
-    /// tiles, the cursor is a bright white tile, mines are red on defeat.
+    /// Draws one cell as `glyph + gap` — a coloured glyph followed by a
+    /// plain space, like the original style. Only the cursor (white
+    /// background) and the exploded mine (solid red block) use background
+    /// colours: background fills the whole cell height, so per-cell
+    /// backgrounds on adjacent rows would merge into stripes.
     fn draw_cell(&self, out: &mut impl Write, r: usize, c: usize) -> io::Result<()> {
         let cell = self.board.cell(r, c);
         let on_cursor = self.cursor == (r, c);
@@ -214,18 +215,22 @@ impl Game {
         } else if on_cursor {
             let glyph = if cell.flagged && !cell.revealed {
                 "⚑".to_string()
+            } else if cell.revealed && cell.mine {
+                "✸".to_string()
             } else if cell.revealed && cell.adjacent > 0 {
                 format!("{}", cell.adjacent)
-            } else {
+            } else if cell.revealed {
                 " ".to_string()
+            } else {
+                "■".to_string()
             };
             (glyph, Color::Black, Color::White)
         } else if cell.revealed && cell.mine {
-            ("✸".to_string(), Color::Black, Color::DarkRed)
+            ("✸".to_string(), Color::Red, Color::Reset)
         } else if cell.flagged && !cell.revealed {
-            ("⚑".to_string(), Color::Yellow, Color::DarkBlue)
+            ("⚑".to_string(), Color::Yellow, Color::Reset)
         } else if !cell.revealed {
-            (" ".to_string(), Color::Reset, Color::DarkBlue)
+            ("■".to_string(), Color::Blue, Color::Reset)
         } else if cell.adjacent == 0 {
             (" ".to_string(), Color::Reset, Color::Reset)
         } else {
@@ -414,20 +419,19 @@ mod tests {
     }
 
     #[test]
-    fn frame_draws_muted_border_and_separated_tiles() {
+    fn frame_draws_muted_border_and_blue_cells() {
         let diff = &DIFFICULTIES[0];
         let game = Game::new(diff);
         let mut buf = Vec::new();
         game.render(&mut buf, diff).unwrap();
         let raw = String::from_utf8(buf).unwrap();
         assert!(raw.contains('┌') && raw.contains('└') && raw.contains('│'), "border");
-        assert!(raw.contains("\x1b[48;5;4m"), "hidden cells must be dark-blue tiles");
-        // Each tile is: bg code, fg code, one tile char, bg reset, fg reset,
-        // then a plain gap space — cells read as separate squares.
-        assert!(
-            raw.contains("\x1b[48;5;4m\x1b[39m \x1b[49m\x1b[39m "),
-            "tile must be one coloured char followed by a gap"
-        );
+        // Hidden cells are bright-blue ■ glyphs on the default background,
+        // not background-filled tiles (which merge into stripes).
+        assert!(raw.contains("\x1b[38;5;12m■"), "hidden cells must be blue glyphs");
+        assert!(!raw.contains("\x1b[48;5;4m"), "no blue background tiles");
+        // The cursor at (0,0) is a white block.
+        assert!(raw.contains("\x1b[48;5;15m"), "cursor must be a white tile");
         assert!(!raw.contains("\x1b[38;5;14m"), "cyan must be gone from the board");
     }
 
@@ -445,7 +449,7 @@ mod tests {
         let mut buf = Vec::new();
         game.render(&mut buf, diff).unwrap();
         let raw = String::from_utf8(buf).unwrap();
-        assert!(raw.contains("\x1b[48;5;9m"), "exploded mine must be bright red");
-        assert!(raw.contains("\x1b[48;5;1m"), "other mines must be dark red");
+        assert!(raw.contains("\x1b[48;5;9m"), "exploded mine must be a solid red block");
+        assert!(raw.contains("\x1b[38;5;9m✸"), "other mines must be red ✸ glyphs");
     }
 }

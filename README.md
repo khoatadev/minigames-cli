@@ -26,7 +26,7 @@ Menu chính hiện ra — chọn game bằng `↑`/`↓` và nhấn `Enter`.
 
 Ba độ khó: Dễ 9x9 (10 mìn), Vừa 16x16 (40 mìn), Khó 30x16 (99 mìn). Lần đào đầu tiên luôn an toàn — mìn chỉ được rải sau nhát đào đầu.
 
-Bàn cờ: các ô chưa mở là tile xanh riêng biệt (cách nhau khe hở) trong khung xám mờ; con trỏ là ô trắng sáng, khi thua các ô mìn hiện nền đỏ (ô nổ đỏ tươi).
+Bàn cờ: ô chưa mở hiển thị `■` xanh, cờ `⚑` vàng, con trỏ là ô nền trắng; thua thì ô nổ thành khối đỏ và các mìn còn lại hiện `✸` đỏ. Khung xám mờ bao quanh bàn cờ.
 
 **Đào nhanh (chord):** đứng trên một ô số đã mở, nếu số cờ xung quanh đúng bằng số đó, nhấn `X` sẽ mở tất cả ô kề chưa mở (bỏ qua ô có cờ). Theo luật cổ điển: nếu cờ cắm sai và một ô kề không cờ là mìn — nổ.
 
