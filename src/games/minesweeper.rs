@@ -1,7 +1,7 @@
 //! Minesweeper — terminal UI and game loop.
 //!
 //! Controls: arrow keys move the cursor, `X` digs, `Z` toggles a flag,
-//! `R` restarts, `Q`/`Esc` returns to the menu.
+//! `R` restarts, `Esc` returns to the menu.
 
 use std::io::{self, Write};
 use std::time::{Duration, Instant};
@@ -64,7 +64,7 @@ impl Game {
         if self.ended.is_some() {
             return match key.code {
                 KeyCode::Char('r' | 'R') => Action::Restart,
-                KeyCode::Char('q' | 'Q') | KeyCode::Esc => Action::Quit,
+                KeyCode::Esc => Action::Quit,
                 _ => Action::Continue,
             };
         }
@@ -86,7 +86,7 @@ impl Game {
                 self.board.toggle_flag(r, c);
             }
             KeyCode::Char('r' | 'R') => return Action::Restart,
-            KeyCode::Char('q' | 'Q') | KeyCode::Esc => return Action::Quit,
+            KeyCode::Esc => return Action::Quit,
             _ => {}
         }
         Action::Continue
@@ -176,14 +176,14 @@ impl Game {
         let footer: Vec<(String, Color)> = match self.board.status() {
             Status::Lost => vec![
                 ("BẠN THUA!  ".to_string(), Color::Red),
-                ("R chơi lại, Q về menu".to_string(), Color::DarkGrey),
+                ("R chơi lại, Esc về menu".to_string(), Color::DarkGrey),
             ],
             Status::Won => vec![
                 (
                     format!("BẠN THẮNG! Thời gian: {}   ", term::mmss(self.elapsed())),
                     Color::Green,
                 ),
-                ("R chơi lại, Q về menu".to_string(), Color::DarkGrey),
+                ("R chơi lại, Esc về menu".to_string(), Color::DarkGrey),
             ],
             Status::InProgress => vec![
                 ("X".to_string(), Color::Yellow),
@@ -192,7 +192,7 @@ impl Game {
                 (" cắm/gỡ cờ   ".to_string(), Color::DarkGrey),
                 ("R".to_string(), Color::Yellow),
                 (" chơi lại   ".to_string(), Color::DarkGrey),
-                ("Q".to_string(), Color::Yellow),
+                ("Esc".to_string(), Color::Yellow),
                 (" về menu".to_string(), Color::DarkGrey),
             ],
         };

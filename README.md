@@ -22,7 +22,7 @@ Menu chính hiện ra — chọn game bằng `↑`/`↓` và nhấn `Enter`.
 | `X` | Đào ô — trên ô số đã mở: đào nhanh các ô kề |
 | `Z` | Cắm / gỡ cờ |
 | `R` | Chơi lại |
-| `Q` / `Esc` | Về menu |
+| `Esc` | Về menu |
 
 Ba độ khó: Dễ 9x9 (10 mìn), Vừa 16x16 (40 mìn), Khó 30x16 (99 mìn). Nhát đào đầu luôn mở được một vùng: mìn chỉ được rải sau nhát đào đầu và không bao giờ nằm trong vùng 3x3 quanh nó (chuẩn Minesweeper cổ điển).
 
@@ -32,12 +32,14 @@ Bàn cờ: ô chưa mở hiển thị `■` xám dịu, cờ `⚑` vàng, con tr
 
 ## Phản xạ — luật chơi
 
-Một chữ cái (a–z) hiện ở vị trí bất kỳ trên màn hình; gõ đúng chữ đó càng nhanh càng được nhiều điểm:
+Một chữ cái (a–z) hiện ở vị trí bất kỳ trên màn hình, mỗi lần xuất hiện mang một màu ngẫu nhiên (7 màu); gõ đúng chữ đó càng nhanh càng được nhiều điểm:
 
 - Đúng: **10–100 điểm** theo tốc độ phản xạ (nhanh nhất = 100)
 - Combo: mỗi lần đúng liên tiếp cộng thêm **+5 điểm** (tối đa +50)
 - Gõ sai: **−20 điểm** và mất combo
-- Ván dài **60 giây**; `Esc` dừng sớm; `R` chơi lại, `Q` về menu
+- Ván dài **60 giây**; `Esc` dừng sớm; `R` chơi lại, `Esc` về menu
+
+Quy ước chung: trong game, `Esc` là phím thoát về menu.
 
 ## Phát triển
 

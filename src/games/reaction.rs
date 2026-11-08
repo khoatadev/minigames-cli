@@ -3,7 +3,8 @@
 //! A letter appears somewhere on screen; type it as fast as you can. Faster
 //! hits score more, consecutive hits build a combo bonus, wrong keys cost
 //! points. A round lasts 60 seconds; `Esc` ends it early. After the round a
-//! summary shows the score and stats, with `R` to replay and `Q` for the menu.
+//! summary shows the score and stats, with `R` to replay and `Esc` for the
+//! menu.
 
 use std::io::{self, Write};
 use std::time::{Duration, Instant};
@@ -22,6 +23,17 @@ use crate::term;
 fn is_plain_key(key: &KeyEvent) -> bool {
     matches!(key.modifiers, KeyModifiers::NONE | KeyModifiers::SHIFT)
 }
+
+/// Palette the targets cycle through; indexed by `Target::color`.
+const PALETTE: [Color; 7] = [
+    Color::Red,
+    Color::Green,
+    Color::Yellow,
+    Color::Blue,
+    Color::Magenta,
+    Color::Cyan,
+    Color::White,
+];
 
 enum Outcome {
     Replay,
@@ -66,7 +78,7 @@ fn play_round(out: &mut impl Write) -> io::Result<Outcome> {
                 continue;
             }
             match key.code {
-                KeyCode::Esc | KeyCode::Char('q' | 'Q') => {
+                KeyCode::Esc => {
                     ended_early = true;
                     break;
                 }
@@ -92,15 +104,16 @@ fn play_round(out: &mut impl Write) -> io::Result<Outcome> {
             }
             match key.code {
                 KeyCode::Char('r' | 'R') => return Ok(Outcome::Replay),
-                KeyCode::Esc | KeyCode::Char('q' | 'Q') => return Ok(Outcome::Quit),
+                KeyCode::Esc => return Ok(Outcome::Quit),
                 _ => {}
             }
         }
     }
 }
 
-/// Spawns a random letter at a random position, avoiding the HUD row, the
-/// footer rows and an immediate repeat of `last_char`.
+/// Spawns a random letter in a random palette colour at a random position,
+/// avoiding the HUD row, the footer rows and an immediate repeat of
+/// `last_char`.
 fn spawn_next(s: &mut Session, last_char: Option<char>) -> io::Result<()> {
     let (cols, rows) = term::dims()?;
     let mut rng = rand::rng();
@@ -111,9 +124,10 @@ fn spawn_next(s: &mut Session, last_char: Option<char>) -> io::Result<()> {
             break;
         }
     }
+    let color = rng.random_range(0..PALETTE.len() as u8);
     let row = if rows > 5 { rng.random_range(2..rows - 2) } else { 2 };
     let col = if cols > 4 { rng.random_range(1..cols - 2) } else { 1 };
-    s.spawn_target(ch, row, col, Instant::now());
+    s.spawn_target(ch, row, col, color, Instant::now());
     Ok(())
 }
 
@@ -138,7 +152,8 @@ fn render_play(out: &mut impl Write, s: &Session, left: Duration) -> io::Result<
     print_centered(out, 0, &hud, cols)?;
 
     if let Some(t) = s.target() {
-        queue!(out, MoveTo(t.col, t.row), Print(t.ch.to_string().with(Color::Yellow)))?;
+        let color = PALETTE[t.color as usize % PALETTE.len()];
+        queue!(out, MoveTo(t.col, t.row), Print(t.ch.to_string().with(color)))?;
     }
 
     let footer = vec![
@@ -181,7 +196,7 @@ fn render_summary(out: &mut impl Write, s: &Session, ended_early: bool) -> io::R
             Color::Reset,
         )],
         vec![(format!("Phản xạ trung bình: {average}   Nhanh nhất: {best}"), Color::Reset)],
-        vec![("R".to_string(), Color::Yellow), (" chơi lại   ".to_string(), Color::DarkGrey), ("Q".to_string(), Color::Yellow), (" về menu".to_string(), Color::DarkGrey)],
+        vec![("R".to_string(), Color::Yellow), (" chơi lại   ".to_string(), Color::DarkGrey), ("Esc".to_string(), Color::Yellow), (" về menu".to_string(), Color::DarkGrey)],
     ];
 
     let start = rows.saturating_sub(lines.len() as u16 + 2) / 2;
@@ -242,13 +257,13 @@ mod tests {
     }
 
     #[test]
-    fn play_frame_shows_hud_footer_and_yellow_target() {
+    fn play_frame_shows_hud_footer_and_coloured_target() {
         let t0 = Instant::now();
         let mut s = Session::new(t0);
-        s.spawn_target('z', 5, 10, t0);
+        // PALETTE[3] is Blue → SGR 38;5;12.
+        s.spawn_target('z', 5, 10, 3, t0);
         let raw = render_play_to_string(&s, Duration::from_secs(60));
-        // The target is the only yellow letter in the play frame.
-        assert_eq!(raw.matches("\x1b[38;5;11mz").count(), 1, "target must be yellow");
+        assert_eq!(raw.matches("\x1b[38;5;12mz").count(), 1, "target in its palette colour");
         let plain = strip_ansi(raw);
         assert!(plain.contains("Điểm:"));
         assert!(plain.contains("Còn:"));
@@ -256,13 +271,28 @@ mod tests {
     }
 
     #[test]
+    fn target_colour_follows_the_palette_index() {
+        let t0 = Instant::now();
+        // Palette indices map to bright SGR codes 9..15 in order.
+        for (idx, code) in (9..=15).enumerate() {
+            let mut s = Session::new(t0);
+            s.spawn_target('w', 3, 3, idx as u8, t0);
+            let raw = render_play_to_string(&s, Duration::from_secs(60));
+            assert!(
+                raw.contains(&format!("\x1b[38;5;{code}mw")),
+                "palette index {idx} must render as SGR {code}"
+            );
+        }
+    }
+
+    #[test]
     fn consumed_target_disappears_from_the_frame() {
         let t0 = Instant::now();
         let mut s = Session::new(t0);
-        s.spawn_target('z', 5, 10, t0);
+        s.spawn_target('z', 5, 10, 1, t0); // PALETTE[1] = Green
         s.press('z', t0);
         let raw = render_play_to_string(&s, Duration::from_secs(30));
-        assert!(!raw.contains("\x1b[38;5;11mz"), "no target after it was hit");
+        assert!(!raw.contains("\x1b[38;5;10mz"), "no target after it was hit");
         assert!(raw.contains("\x1b[38;5;11mEsc"), "footer hint keys stay yellow");
     }
 
@@ -270,9 +300,9 @@ mod tests {
     fn summary_shows_score_and_stats() {
         let t0 = Instant::now();
         let mut s = Session::new(t0);
-        s.spawn_target('a', 1, 1, t0);
+        s.spawn_target('a', 1, 1, 0, t0);
         s.press('a', t0 + Duration::from_millis(150));
-        s.spawn_target('b', 2, 2, t0 + Duration::from_millis(200));
+        s.spawn_target('b', 2, 2, 0, t0 + Duration::from_millis(200));
         s.press('x', t0 + Duration::from_millis(300));
         let summary = render_summary_to_string(&s, false);
         assert!(summary.contains("HẾT GIỜ!"));

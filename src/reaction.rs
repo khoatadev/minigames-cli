@@ -32,6 +32,8 @@ pub struct Target {
     pub col: u16,
     /// When the target appeared — reaction time is measured from here.
     pub spawned_at: Instant,
+    /// Palette index chosen by the caller (the UI maps it to a colour).
+    pub color: u8,
 }
 
 pub struct Session {
@@ -65,9 +67,10 @@ impl Session {
         self.target
     }
 
-    /// Puts a new target on screen. Callers pick the character and position.
-    pub fn spawn_target(&mut self, ch: char, row: u16, col: u16, now: Instant) {
-        self.target = Some(Target { ch, row, col, spawned_at: now });
+    /// Puts a new target on screen. Callers pick the character, position and
+    /// colour (as a palette index).
+    pub fn spawn_target(&mut self, ch: char, row: u16, col: u16, color: u8, now: Instant) {
+        self.target = Some(Target { ch, row, col, spawned_at: now, color });
     }
 
     /// Judges one key press against the current target.
@@ -124,7 +127,7 @@ mod tests {
 
     fn session_with_target(ch: char, t0: Instant) -> Session {
         let mut s = Session::new(t0);
-        s.spawn_target(ch, 5, 10, t0);
+        s.spawn_target(ch, 5, 10, 0, t0);
         s
     }
 
@@ -191,12 +194,12 @@ mod tests {
         let t0 = Instant::now();
         let mut s = session_with_target('a', t0);
         s.press('a', t0 + Duration::from_millis(100));
-        s.spawn_target('b', 1, 1, t0 + Duration::from_millis(150));
+        s.spawn_target('b', 1, 1, 0, t0 + Duration::from_millis(150));
         s.press('b', t0 + Duration::from_millis(250));
         assert_eq!(s.streak, 2);
         assert_eq!(s.max_streak, 2);
         let before = s.score;
-        s.spawn_target('c', 2, 2, t0 + Duration::from_millis(300));
+        s.spawn_target('c', 2, 2, 0, t0 + Duration::from_millis(300));
         s.press('z', t0 + Duration::from_millis(400));
         assert_eq!(s.score, before - MISS_PENALTY);
         assert_eq!(s.streak, 0, "combo must reset");
@@ -208,7 +211,7 @@ mod tests {
         let t0 = Instant::now();
         let mut s = Session::new(t0);
         assert_eq!(s.press('a', t0), PressResult::Ignored);
-        s.spawn_target('a', 1, 1, t0);
+        s.spawn_target('a', 1, 1, 0, t0);
         s.press('a', t0);
         assert_eq!(s.press('a', t0), PressResult::Ignored, "target consumed");
     }
@@ -218,7 +221,7 @@ mod tests {
         let t0 = Instant::now();
         let mut s = session_with_target('a', t0);
         s.press('a', t0 + Duration::from_millis(500));
-        s.spawn_target('b', 1, 1, t0 + Duration::from_millis(600));
+        s.spawn_target('b', 1, 1, 0, t0 + Duration::from_millis(600));
         s.press('b', t0 + Duration::from_millis(700));
         assert_eq!(s.best_reaction, Some(Duration::from_millis(100)));
         assert_eq!(s.average_reaction(), Some(Duration::from_millis(300)));
@@ -232,5 +235,13 @@ mod tests {
         assert!(s.finished(t0 + GAME_DURATION));
         assert_eq!(s.time_left(t0 + Duration::from_secs(30)), Duration::from_secs(30));
         assert_eq!(s.time_left(t0 + Duration::from_secs(70)), Duration::ZERO);
+    }
+
+    #[test]
+    fn target_keeps_its_colour_index() {
+        let t0 = Instant::now();
+        let mut s = Session::new(t0);
+        s.spawn_target('m', 1, 2, 4, t0);
+        assert_eq!(s.target().unwrap().color, 4);
     }
 }
