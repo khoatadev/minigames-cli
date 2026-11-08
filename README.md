@@ -1,6 +1,6 @@
-# Terminal Mini Games
+# minigames-cli
 
-Bộ sưu tập mini game chạy ngay trong terminal, viết bằng Rust. Menu chính điều hướng bằng bàn phím, mỗi game khởi động tức thì.
+Bộ sưu tập mini game chạy ngay trong terminal (`game-cli`), viết bằng Rust. Menu chính điều hướng bằng bàn phím, mỗi game khởi động tức thì.
 
 Hiện có **Dò mìn (Minesweeper)**; Caro và Rắn săn mồi đang được phát triển.
 
