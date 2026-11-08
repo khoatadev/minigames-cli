@@ -9,7 +9,7 @@ use std::time::{Duration, Instant};
 use crossterm::cursor::MoveTo;
 use crossterm::event::{Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
 use crossterm::queue;
-use crossterm::style::{Color, Print, SetBackgroundColor, Stylize};
+use crossterm::style::{Color, Print, SetBackgroundColor, SetForegroundColor, Stylize};
 
 use crate::board::{Board, ChordOutcome, DigResult, Status};
 use crate::term;
@@ -38,6 +38,8 @@ struct Game {
     cursor: (usize, usize),
     started: Instant,
     ended: Option<Instant>,
+    /// The mine cell that was dug when the game was lost — drawn bright red.
+    exploded: Option<(usize, usize)>,
 }
 
 impl Game {
@@ -47,6 +49,7 @@ impl Game {
             cursor: (0, 0),
             started: Instant::now(),
             ended: None,
+            exploded: None,
         }
     }
 
@@ -93,6 +96,7 @@ impl Game {
         let (r, c) = self.cursor;
         match self.board.dig(r, c) {
             DigResult::Boomed => {
+                self.exploded = self.board.first_revealed_mine();
                 self.board.reveal_all_mines();
                 self.ended = Some(Instant::now());
             }
@@ -110,6 +114,7 @@ impl Game {
         let (r, c) = self.cursor;
         match self.board.chord(r, c) {
             ChordOutcome::Boomed => {
+                self.exploded = self.board.first_revealed_mine();
                 self.board.reveal_all_mines();
                 self.ended = Some(Instant::now());
             }
@@ -123,41 +128,51 @@ impl Game {
 
     fn render(&self, out: &mut impl Write, diff: &Difficulty) -> io::Result<()> {
         term::begin_frame(out)?;
-        // Board is centered; header and footer are centered on the same
-        // vertical axis so everything lines up in the middle.
-        let board_w = self.board.cols as u16 * 2;
-        let frame_h = self.board.rows as u16 + 4; // header, blank, board, blank, footer
-        let (x0, y0) = term::center_offset(board_w, frame_h)?;
+        // Board (incl. its frame) is centered; header and footer are centered
+        // on the same vertical axis so everything lines up in the middle.
+        const FRAME_PAD: u16 = 2; // │ borders on both sides
+        let frame_w = self.board.cols as u16 * 2 + FRAME_PAD;
+        let frame_h = self.board.rows as u16 + 2; // top + bottom border
+        let frame_total = frame_h + 4; // header, blank, frame, blank, footer
+        let (x0, y0) = term::center_offset(frame_w, frame_total)?;
         let (term_cols, _) = term::dims()?;
         let mines_left = self.board.mines as isize - self.board.flags_placed() as isize;
 
         // Header
+        let mines_color = match mines_left {
+            n if n < 0 => Color::Red,
+            0 => Color::Green,
+            _ => Color::Yellow,
+        };
         let header = vec![
-            (format!("DÒ MÌN - {}   ", diff.name), Color::Reset),
+            (format!("DÒ MÌN - {}   ", diff.name), Color::Cyan),
             ("Mìn: ".to_string(), Color::DarkGrey),
-            (format!("{mines_left}   "), Color::Reset),
+            (format!("{mines_left}   "), mines_color),
             ("Thời gian: ".to_string(), Color::DarkGrey),
             (mmss(self.elapsed()), Color::Reset),
         ];
         print_centered(out, y0, &header, term_cols)?;
 
-        // Board
+        // Frame around the board
+        let bar = "─".repeat(self.board.cols * 2);
+        queue!(out, MoveTo(x0, y0 + 2), Print(format!("┌{bar}┐").with(Color::Cyan)))?;
+        queue!(
+            out,
+            MoveTo(x0, y0 + 2 + self.board.rows as u16 + 1),
+            Print(format!("└{bar}┘").with(Color::Cyan))
+        )?;
+
+        // Board cells, flanked by │ borders
         for r in 0..self.board.rows {
-            queue!(out, MoveTo(x0, (y0 + 2 + r as u16)))?;
+            queue!(out, MoveTo(x0, y0 + 3 + r as u16), Print("│".with(Color::Cyan)))?;
             for c in 0..self.board.cols {
-                let on_cursor = self.cursor == (r, c);
-                if on_cursor {
-                    queue!(out, SetBackgroundColor(Color::DarkGrey))?;
-                }
                 self.draw_cell(out, r, c)?;
-                if on_cursor {
-                    queue!(out, SetBackgroundColor(Color::Reset))?;
-                }
             }
+            queue!(out, Print("│".with(Color::Cyan)))?;
         }
 
         // Status / footer
-        let status_row = y0 + 2 + self.board.rows as u16 + 1;
+        let status_row = y0 + 2 + self.board.rows as u16 + 2;
         let footer: Vec<(String, Color)> = match self.board.status() {
             Status::Lost => vec![
                 ("BẠN THUA!  ".to_string(), Color::Red),
@@ -170,31 +185,59 @@ impl Game {
                 ),
                 ("R chơi lại, Q về menu".to_string(), Color::DarkGrey),
             ],
-            Status::InProgress => vec![(
-                "X đào   Z cắm/gỡ cờ   R chơi lại   Q về menu".to_string(),
-                Color::DarkGrey,
-            )],
+            Status::InProgress => vec![
+                ("X".to_string(), Color::Yellow),
+                (" đào   ".to_string(), Color::DarkGrey),
+                ("Z".to_string(), Color::Yellow),
+                (" cắm/gỡ cờ   ".to_string(), Color::DarkGrey),
+                ("R".to_string(), Color::Yellow),
+                (" chơi lại   ".to_string(), Color::DarkGrey),
+                ("Q".to_string(), Color::Yellow),
+                (" về menu".to_string(), Color::DarkGrey),
+            ],
         };
         print_centered(out, status_row, &footer, term_cols)?;
         out.flush()
     }
 
+    /// Draws one cell as a coloured tile: hidden cells are solid dark-blue
+    /// tiles, the cursor is a bright white tile, mines are red on defeat.
     fn draw_cell(&self, out: &mut impl Write, r: usize, c: usize) -> io::Result<()> {
         let cell = self.board.cell(r, c);
-        if cell.flagged && !cell.revealed {
-            return queue!(out, Print("⚑ ".with(Color::Yellow)));
-        }
-        if cell.mine && cell.revealed {
-            return queue!(out, Print("✸ ".with(Color::Red)));
-        }
-        if !cell.revealed {
-            return queue!(out, Print("■ ".with(Color::DarkGrey)));
-        }
-        if cell.adjacent == 0 {
-            return queue!(out, Print("  "));
-        }
-        let color = number_color(cell.adjacent);
-        queue!(out, Print(format!("{} ", cell.adjacent).with(color)))
+        let on_cursor = self.cursor == (r, c);
+        let exploded = self.exploded == Some((r, c));
+
+        let (glyph, fg, bg) = if exploded {
+            ("✸ ".to_string(), Color::Black, Color::Red)
+        } else if on_cursor {
+            let glyph = if cell.flagged && !cell.revealed {
+                "⚑ ".to_string()
+            } else if cell.revealed && cell.adjacent > 0 {
+                format!("{} ", cell.adjacent)
+            } else {
+                "  ".to_string()
+            };
+            (glyph, Color::Black, Color::White)
+        } else if cell.revealed && cell.mine {
+            ("✸ ".to_string(), Color::Black, Color::DarkRed)
+        } else if cell.flagged && !cell.revealed {
+            ("⚑ ".to_string(), Color::Yellow, Color::DarkBlue)
+        } else if !cell.revealed {
+            ("  ".to_string(), Color::Reset, Color::DarkBlue)
+        } else if cell.adjacent == 0 {
+            ("  ".to_string(), Color::Reset, Color::Reset)
+        } else {
+            (format!("{} ", cell.adjacent), number_color(cell.adjacent), Color::Reset)
+        };
+
+        queue!(
+            out,
+            SetBackgroundColor(bg),
+            SetForegroundColor(fg),
+            Print(glyph),
+            SetBackgroundColor(Color::Reset),
+            SetForegroundColor(Color::Reset)
+        )
     }
 }
 
@@ -266,7 +309,25 @@ mod tests {
     fn render_to_string(game: &Game, diff: &Difficulty) -> String {
         let mut buf = Vec::new();
         game.render(&mut buf, diff).unwrap();
-        String::from_utf8(buf).unwrap()
+        strip_ansi(String::from_utf8(buf).unwrap())
+    }
+
+    /// Removes CSI escape sequences so assertions see plain text.
+    fn strip_ansi(s: String) -> String {
+        let mut out = String::with_capacity(s.len());
+        let mut chars = s.chars();
+        while let Some(c) = chars.next() {
+            if c == '\x1b' {
+                for esc in chars.by_ref() {
+                    if esc.is_ascii_alphabetic() {
+                        break;
+                    }
+                }
+            } else {
+                out.push(c);
+            }
+        }
+        out
     }
 
     #[test]
@@ -347,5 +408,34 @@ mod tests {
         game.handle_key(key);
         assert!(game.board.cell(1, 1).revealed);
         assert_eq!(game.board.status(), Status::InProgress);
+    }
+
+    #[test]
+    fn frame_draws_cyan_border_and_tile_backgrounds() {
+        let diff = &DIFFICULTIES[0];
+        let game = Game::new(diff);
+        let mut buf = Vec::new();
+        game.render(&mut buf, diff).unwrap();
+        let raw = String::from_utf8(buf).unwrap();
+        assert!(raw.contains('┌') && raw.contains('└') && raw.contains('│'), "border");
+        assert!(raw.contains("\x1b[48;5;4m"), "hidden cells must be dark-blue tiles");
+    }
+
+    #[test]
+    fn lost_frame_paints_mines_red() {
+        let diff = &DIFFICULTIES[0];
+        let mut game = Game::new(diff);
+        game.board.dig(0, 0);
+        let mine_at = (0..diff.rows)
+            .flat_map(|r| (0..diff.cols).map(move |c| (r, c)))
+            .find(|&(r, c)| game.board.cell(r, c).mine && !game.board.cell(r, c).revealed)
+            .unwrap();
+        game.cursor = mine_at;
+        game.dig();
+        let mut buf = Vec::new();
+        game.render(&mut buf, diff).unwrap();
+        let raw = String::from_utf8(buf).unwrap();
+        assert!(raw.contains("\x1b[48;5;9m"), "exploded mine must be bright red");
+        assert!(raw.contains("\x1b[48;5;1m"), "other mines must be dark red");
     }
 }

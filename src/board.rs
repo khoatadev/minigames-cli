@@ -94,6 +94,13 @@ impl Board {
         }
     }
 
+    /// Position of the first revealed mine — the one that just exploded.
+    /// Must be read *before* `reveal_all_mines()` to be meaningful.
+    pub fn first_revealed_mine(&self) -> Option<(usize, usize)> {
+        let i = self.cells.iter().position(|c| c.mine && c.revealed)?;
+        Some((i / self.cols, i % self.cols))
+    }
+
     /// On win: flags every remaining mine (classic cosmetic behaviour).
     pub fn auto_flag_remaining(&mut self) {
         for cell in &mut self.cells {
@@ -430,5 +437,14 @@ mod tests {
         b.toggle_flag(0, 0);
         b.chord(1, 1); // opens every remaining safe cell
         assert_eq!(b.status(), Status::Won);
+    }
+
+    #[test]
+    fn first_revealed_mine_points_at_the_explosion() {
+        let mut b = Board::new(3, 4, 2);
+        b.plant_mines(&[(0, 2), (2, 3)]);
+        b.dig(0, 0); // safe dig triggers placement
+        b.dig(0, 2); // boom into the mine at (0,2)
+        assert_eq!(b.first_revealed_mine(), Some((0, 2)));
     }
 }
