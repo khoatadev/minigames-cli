@@ -123,17 +123,22 @@ impl Game {
 
     fn render(&self, out: &mut impl Write, diff: &Difficulty) -> io::Result<()> {
         term::begin_frame(out)?;
+        // Center the whole frame (header + board + footer) in the terminal.
+        let board_w = self.board.cols as u16 * 2;
+        let frame_h = self.board.rows as u16 + 4; // header, blank, board, blank, footer
+        let (x0, y0) = term::center_offset(board_w, frame_h)?;
         let flags = self.board.flags_placed();
         let mines_left = self.board.mines as isize - flags as isize;
 
-        // Header
+        // Header, aligned with the board's left edge
+        queue!(out, MoveTo(x0, y0))?;
         queue!(out, Print(format!("DÒ MÌN — {}   ", diff.name)))?;
         queue!(out, Print("Mìn: ".with(Color::DarkGrey)), Print(format!("{mines_left} ")))?;
         queue!(out, Print("Thời gian: ".with(Color::DarkGrey)), Print(mmss(self.elapsed())))?;
 
         // Board
         for r in 0..self.board.rows {
-            queue!(out, MoveTo(1, (r + 2) as u16))?;
+            queue!(out, MoveTo(x0, (y0 + 2 + r as u16)))?;
             for c in 0..self.board.cols {
                 let on_cursor = self.cursor == (r, c);
                 if on_cursor {
@@ -147,8 +152,8 @@ impl Game {
         }
 
         // Status / footer
-        let status_row = (self.board.rows + 3) as u16;
-        queue!(out, MoveTo(1, status_row))?;
+        let status_row = y0 + 2 + self.board.rows as u16 + 1;
+        queue!(out, MoveTo(x0, status_row))?;
         match self.board.status() {
             Status::Lost => {
                 queue!(out, Print("BẠN THUA!  ".with(Color::Red)))?;
