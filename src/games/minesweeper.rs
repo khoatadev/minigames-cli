@@ -230,7 +230,7 @@ impl Game {
         } else if cell.flagged && !cell.revealed {
             ("⚑".to_string(), Color::Yellow, Color::Reset)
         } else if !cell.revealed {
-            ("■".to_string(), Color::Blue, Color::Reset)
+            ("■".to_string(), Color::DarkGrey, Color::Reset)
         } else if cell.adjacent == 0 {
             (" ".to_string(), Color::Reset, Color::Reset)
         } else {
@@ -426,9 +426,10 @@ mod tests {
         game.render(&mut buf, diff).unwrap();
         let raw = String::from_utf8(buf).unwrap();
         assert!(raw.contains('┌') && raw.contains('└') && raw.contains('│'), "border");
-        // Hidden cells are bright-blue ■ glyphs on the default background,
-        // not background-filled tiles (which merge into stripes).
-        assert!(raw.contains("\x1b[38;5;12m■"), "hidden cells must be blue glyphs");
+        // Hidden cells are muted grey ■ glyphs on the default background —
+        // bright colours are reserved for numbers, flags and mines.
+        assert!(raw.contains("\x1b[38;5;8m■"), "hidden cells must be grey glyphs");
+        assert!(!raw.contains("\x1b[38;5;12m■"), "no bright blue hidden cells");
         assert!(!raw.contains("\x1b[48;5;4m"), "no blue background tiles");
         // The cursor at (0,0) is a white block.
         assert!(raw.contains("\x1b[48;5;15m"), "cursor must be a white tile");

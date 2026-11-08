@@ -26,7 +26,7 @@ Menu chính hiện ra — chọn game bằng `↑`/`↓` và nhấn `Enter`.
 
 Ba độ khó: Dễ 9x9 (10 mìn), Vừa 16x16 (40 mìn), Khó 30x16 (99 mìn). Nhát đào đầu luôn mở được một vùng: mìn chỉ được rải sau nhát đào đầu và không bao giờ nằm trong vùng 3x3 quanh nó (chuẩn Minesweeper cổ điển).
 
-Bàn cờ: ô chưa mở hiển thị `■` xanh, cờ `⚑` vàng, con trỏ là ô nền trắng; thua thì ô nổ thành khối đỏ và các mìn còn lại hiện `✸` đỏ. Khung xám mờ bao quanh bàn cờ.
+Bàn cờ: ô chưa mở hiển thị `■` xám dịu, cờ `⚑` vàng, con trỏ là ô nền trắng; thua thì ô nổ thành khối đỏ và các mìn còn lại hiện `✸` đỏ. Khung xám mờ bao quanh bàn cờ.
 
 **Đào nhanh (chord):** đứng trên một ô số đã mở, nếu số cờ xung quanh đúng bằng số đó, nhấn `X` sẽ mở tất cả ô kề chưa mở (bỏ qua ô có cờ). Theo luật cổ điển: nếu cờ cắm sai và một ô kề không cờ là mìn — nổ.
 
