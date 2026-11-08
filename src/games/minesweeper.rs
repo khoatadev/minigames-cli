@@ -149,7 +149,7 @@ impl Game {
             ("Mìn: ".to_string(), Color::DarkGrey),
             (format!("{mines_left}   "), mines_color),
             ("Thời gian: ".to_string(), Color::DarkGrey),
-            (mmss(self.elapsed()), Color::Reset),
+            (term::mmss(self.elapsed()), Color::Reset),
         ];
         print_centered(out, y0, &header, term_cols)?;
 
@@ -180,7 +180,7 @@ impl Game {
             ],
             Status::Won => vec![
                 (
-                    format!("BẠN THẮNG! Thời gian: {}   ", mmss(self.elapsed())),
+                    format!("BẠN THẮNG! Thời gian: {}   ", term::mmss(self.elapsed())),
                     Color::Green,
                 ),
                 ("R chơi lại, Q về menu".to_string(), Color::DarkGrey),
@@ -278,11 +278,6 @@ fn number_color(n: u8) -> Color {
     }
 }
 
-fn mmss(d: Duration) -> String {
-    let total = d.as_secs();
-    format!("{:02}:{:02}", total / 60, total % 60)
-}
-
 /// Runs one minesweeper session (until the user quits back to the menu).
 pub fn run(diff: &Difficulty) -> io::Result<()> {
     let mut out = io::stdout();
@@ -290,7 +285,7 @@ pub fn run(diff: &Difficulty) -> io::Result<()> {
     let mut last_time = String::new();
     let mut dirty = true;
     loop {
-        let now = mmss(game.elapsed());
+        let now = term::mmss(game.elapsed());
         if dirty || now != last_time {
             game.render(&mut out, diff)?;
             last_time = now;
@@ -381,12 +376,6 @@ mod tests {
         game.dig();
         let frame = render_to_string(&game, diff);
         assert!(frame.contains("BẠN THUA"));
-    }
-
-    #[test]
-    fn mmss_formats_as_mm_ss() {
-        assert_eq!(mmss(Duration::from_secs(65)), "01:05");
-        assert_eq!(mmss(Duration::from_secs(0)), "00:00");
     }
 
     #[test]

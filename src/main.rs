@@ -3,6 +3,7 @@
 mod board;
 mod games;
 mod menu;
+mod reaction;
 mod term;
 
 fn main() -> std::io::Result<()> {

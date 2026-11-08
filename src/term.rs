@@ -49,6 +49,24 @@ pub fn dims() -> io::Result<(u16, u16)> {
     size()
 }
 
+/// Formats a duration as `mm:ss`.
+pub fn mmss(d: Duration) -> String {
+    let total = d.as_secs();
+    format!("{:02}:{:02}", total / 60, total % 60)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn mmss_formats_as_mm_ss() {
+        assert_eq!(mmss(Duration::from_secs(65)), "01:05");
+        assert_eq!(mmss(Duration::from_secs(0)), "00:00");
+        assert_eq!(mmss(Duration::from_secs(3600)), "60:00");
+    }
+}
+
 /// Polls for one event, or `None` if nothing arrived within `timeout`.
 pub fn poll_event(timeout: Duration) -> io::Result<Option<Event>> {
     if event::poll(timeout)? {

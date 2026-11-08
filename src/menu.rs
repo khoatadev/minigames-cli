@@ -8,6 +8,7 @@ use crossterm::queue;
 use crossterm::style::{Color, Print, SetBackgroundColor, Stylize};
 
 use crate::games::minesweeper::{self, DIFFICULTIES};
+use crate::games::reaction;
 use crate::term;
 
 struct MenuEntry {
@@ -21,8 +22,9 @@ impl MenuEntry {
     }
 }
 
-const GAMES: [(&str, bool); 3] = [
+const GAMES: [(&str, bool); 4] = [
     ("Dò mìn", true),
+    ("Phản xạ", true),
     ("Caro", false),
     ("Rắn săn mồi", false),
 ];
@@ -49,6 +51,7 @@ pub fn run() -> io::Result<()> {
                     _ => continue,
                 }
             }
+            Some(1) => reaction::run()?,
             _ => return Ok(()),
         }
     }
@@ -161,7 +164,8 @@ mod tests {
     fn selection_marker_moves_with_index() {
         let entries: Vec<MenuEntry> =
             GAMES.iter().map(|&(l, on)| MenuEntry::new(l, on)).collect();
-        assert!(render(&entries, 1).contains("▶ Caro"));
+        assert!(render(&entries, 1).contains("▶ Phản xạ"));
+        assert!(render(&entries, 2).contains("▶ Caro"));
     }
 
     #[test]

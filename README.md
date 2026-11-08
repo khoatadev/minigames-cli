@@ -2,7 +2,7 @@
 
 Bộ sưu tập mini game chạy ngay trong terminal (`game-cli`), viết bằng Rust. Menu chính điều hướng bằng bàn phím, mỗi game khởi động tức thì.
 
-Hiện có **Dò mìn (Minesweeper)**; Caro và Rắn săn mồi đang được phát triển.
+Hiện có **Dò mìn (Minesweeper)** và **Phản xạ**; Caro và Rắn săn mồi đang được phát triển.
 
 ## Quickstart
 
@@ -29,6 +29,15 @@ Ba độ khó: Dễ 9x9 (10 mìn), Vừa 16x16 (40 mìn), Khó 30x16 (99 mìn). 
 Bàn cờ: ô chưa mở hiển thị `■` xám dịu, cờ `⚑` vàng, con trỏ là ô nền trắng; thua thì ô nổ thành khối đỏ và các mìn còn lại hiện `✸` đỏ. Khung xám mờ bao quanh bàn cờ.
 
 **Đào nhanh (chord):** đứng trên một ô số đã mở, nếu số cờ xung quanh đúng bằng số đó, nhấn `X` sẽ mở tất cả ô kề chưa mở (bỏ qua ô có cờ). Theo luật cổ điển: nếu cờ cắm sai và một ô kề không cờ là mìn — nổ.
+
+## Phản xạ — luật chơi
+
+Một chữ cái (a–z) hiện ở vị trí bất kỳ trên màn hình; gõ đúng chữ đó càng nhanh càng được nhiều điểm:
+
+- Đúng: **10–100 điểm** theo tốc độ phản xạ (nhanh nhất = 100)
+- Combo: mỗi lần đúng liên tiếp cộng thêm **+5 điểm** (tối đa +50)
+- Gõ sai: **−20 điểm** và mất combo
+- Ván dài **60 giây**; `Esc` dừng sớm; `R` chơi lại, `Q` về menu
 
 ## Phát triển
 
