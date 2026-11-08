@@ -123,18 +123,23 @@ impl Game {
 
     fn render(&self, out: &mut impl Write, diff: &Difficulty) -> io::Result<()> {
         term::begin_frame(out)?;
-        // Center the whole frame (header + board + footer) in the terminal.
+        // Board is centered; header and footer are centered on the same
+        // vertical axis so everything lines up in the middle.
         let board_w = self.board.cols as u16 * 2;
         let frame_h = self.board.rows as u16 + 4; // header, blank, board, blank, footer
         let (x0, y0) = term::center_offset(board_w, frame_h)?;
-        let flags = self.board.flags_placed();
-        let mines_left = self.board.mines as isize - flags as isize;
+        let (term_cols, _) = term::dims()?;
+        let mines_left = self.board.mines as isize - self.board.flags_placed() as isize;
 
-        // Header, aligned with the board's left edge
-        queue!(out, MoveTo(x0, y0))?;
-        queue!(out, Print(format!("DÒ MÌN — {}   ", diff.name)))?;
-        queue!(out, Print("Mìn: ".with(Color::DarkGrey)), Print(format!("{mines_left} ")))?;
-        queue!(out, Print("Thời gian: ".with(Color::DarkGrey)), Print(mmss(self.elapsed())))?;
+        // Header
+        let header = vec![
+            (format!("DÒ MÌN - {}   ", diff.name), Color::Reset),
+            ("Mìn: ".to_string(), Color::DarkGrey),
+            (format!("{mines_left}   "), Color::Reset),
+            ("Thời gian: ".to_string(), Color::DarkGrey),
+            (mmss(self.elapsed()), Color::Reset),
+        ];
+        print_centered(out, y0, &header, term_cols)?;
 
         // Board
         for r in 0..self.board.rows {
@@ -153,20 +158,24 @@ impl Game {
 
         // Status / footer
         let status_row = y0 + 2 + self.board.rows as u16 + 1;
-        queue!(out, MoveTo(x0, status_row))?;
-        match self.board.status() {
-            Status::Lost => {
-                queue!(out, Print("BẠN THUA!  ".with(Color::Red)))?;
-                queue!(out, Print("R chơi lại, Q về menu".with(Color::DarkGrey)))?;
-            }
-            Status::Won => {
-                queue!(out, Print(format!("BẠN THẮNG! Thời gian: {}  ", mmss(self.elapsed())).with(Color::Green)))?;
-                queue!(out, Print("R chơi lại, Q về menu".with(Color::DarkGrey)))?;
-            }
-            Status::InProgress => {
-                queue!(out, Print("X đào   Z cắm/gỡ cờ   R chơi lại   Q về menu".with(Color::DarkGrey)))?;
-            }
-        }
+        let footer: Vec<(String, Color)> = match self.board.status() {
+            Status::Lost => vec![
+                ("BẠN THUA!  ".to_string(), Color::Red),
+                ("R chơi lại, Q về menu".to_string(), Color::DarkGrey),
+            ],
+            Status::Won => vec![
+                (
+                    format!("BẠN THẮNG! Thời gian: {}   ", mmss(self.elapsed())),
+                    Color::Green,
+                ),
+                ("R chơi lại, Q về menu".to_string(), Color::DarkGrey),
+            ],
+            Status::InProgress => vec![(
+                "X đào   Z cắm/gỡ cờ   R chơi lại   Q về menu".to_string(),
+                Color::DarkGrey,
+            )],
+        };
+        print_centered(out, status_row, &footer, term_cols)?;
         out.flush()
     }
 
@@ -187,6 +196,22 @@ impl Game {
         let color = number_color(cell.adjacent);
         queue!(out, Print(format!("{} ", cell.adjacent).with(color)))
     }
+}
+
+/// Prints styled text segments on one row, centered horizontally in a
+/// `cols`-wide terminal. Width is measured in visible characters.
+fn print_centered(
+    out: &mut impl Write,
+    row: u16,
+    parts: &[(String, Color)],
+    cols: u16,
+) -> io::Result<()> {
+    let width: usize = parts.iter().map(|(s, _)| s.chars().count()).sum();
+    queue!(out, MoveTo(cols.saturating_sub(width as u16) / 2, row))?;
+    for (text, color) in parts {
+        queue!(out, Print(text.clone().with(*color)))?;
+    }
+    Ok(())
 }
 
 fn number_color(n: u8) -> Color {

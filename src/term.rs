@@ -44,6 +44,11 @@ pub fn center_offset(content_w: u16, content_h: u16) -> io::Result<(u16, u16)> {
     ))
 }
 
+/// Terminal size as `(cols, rows)`.
+pub fn dims() -> io::Result<(u16, u16)> {
+    size()
+}
+
 /// Polls for one event, or `None` if nothing arrived within `timeout`.
 pub fn poll_event(timeout: Duration) -> io::Result<Option<Event>> {
     if event::poll(timeout)? {
