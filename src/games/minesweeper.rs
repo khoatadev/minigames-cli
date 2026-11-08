@@ -145,7 +145,7 @@ impl Game {
             _ => Color::Yellow,
         };
         let header = vec![
-            (format!("DÒ MÌN - {}   ", diff.name), Color::Cyan),
+            (format!("DÒ MÌN - {}   ", diff.name), Color::Reset),
             ("Mìn: ".to_string(), Color::DarkGrey),
             (format!("{mines_left}   "), mines_color),
             ("Thời gian: ".to_string(), Color::DarkGrey),
@@ -153,22 +153,22 @@ impl Game {
         ];
         print_centered(out, y0, &header, term_cols)?;
 
-        // Frame around the board
+        // Frame around the board — muted grey so it doesn't fight the tiles
         let bar = "─".repeat(self.board.cols * 2);
-        queue!(out, MoveTo(x0, y0 + 2), Print(format!("┌{bar}┐").with(Color::Cyan)))?;
+        queue!(out, MoveTo(x0, y0 + 2), Print(format!("┌{bar}┐").with(Color::DarkGrey)))?;
         queue!(
             out,
             MoveTo(x0, y0 + 2 + self.board.rows as u16 + 1),
-            Print(format!("└{bar}┘").with(Color::Cyan))
+            Print(format!("└{bar}┘").with(Color::DarkGrey))
         )?;
 
         // Board cells, flanked by │ borders
         for r in 0..self.board.rows {
-            queue!(out, MoveTo(x0, y0 + 3 + r as u16), Print("│".with(Color::Cyan)))?;
+            queue!(out, MoveTo(x0, y0 + 3 + r as u16), Print("│".with(Color::DarkGrey)))?;
             for c in 0..self.board.cols {
                 self.draw_cell(out, r, c)?;
             }
-            queue!(out, Print("│".with(Color::Cyan)))?;
+            queue!(out, Print("│".with(Color::DarkGrey)))?;
         }
 
         // Status / footer
@@ -200,7 +200,9 @@ impl Game {
         out.flush()
     }
 
-    /// Draws one cell as a coloured tile: hidden cells are solid dark-blue
+    /// Draws one cell as `tile + gap`: a single coloured character followed
+    /// by a plain space, so cells stay visually separated like the old
+    /// glyph style while tiles keep their colour. Hidden cells are dark-blue
     /// tiles, the cursor is a bright white tile, mines are red on defeat.
     fn draw_cell(&self, out: &mut impl Write, r: usize, c: usize) -> io::Result<()> {
         let cell = self.board.cell(r, c);
@@ -208,26 +210,26 @@ impl Game {
         let exploded = self.exploded == Some((r, c));
 
         let (glyph, fg, bg) = if exploded {
-            ("✸ ".to_string(), Color::Black, Color::Red)
+            ("✸".to_string(), Color::Black, Color::Red)
         } else if on_cursor {
             let glyph = if cell.flagged && !cell.revealed {
-                "⚑ ".to_string()
+                "⚑".to_string()
             } else if cell.revealed && cell.adjacent > 0 {
-                format!("{} ", cell.adjacent)
+                format!("{}", cell.adjacent)
             } else {
-                "  ".to_string()
+                " ".to_string()
             };
             (glyph, Color::Black, Color::White)
         } else if cell.revealed && cell.mine {
-            ("✸ ".to_string(), Color::Black, Color::DarkRed)
+            ("✸".to_string(), Color::Black, Color::DarkRed)
         } else if cell.flagged && !cell.revealed {
-            ("⚑ ".to_string(), Color::Yellow, Color::DarkBlue)
+            ("⚑".to_string(), Color::Yellow, Color::DarkBlue)
         } else if !cell.revealed {
-            ("  ".to_string(), Color::Reset, Color::DarkBlue)
+            (" ".to_string(), Color::Reset, Color::DarkBlue)
         } else if cell.adjacent == 0 {
-            ("  ".to_string(), Color::Reset, Color::Reset)
+            (" ".to_string(), Color::Reset, Color::Reset)
         } else {
-            (format!("{} ", cell.adjacent), number_color(cell.adjacent), Color::Reset)
+            (format!("{}", cell.adjacent), number_color(cell.adjacent), Color::Reset)
         };
 
         queue!(
@@ -236,7 +238,8 @@ impl Game {
             SetForegroundColor(fg),
             Print(glyph),
             SetBackgroundColor(Color::Reset),
-            SetForegroundColor(Color::Reset)
+            SetForegroundColor(Color::Reset),
+            Print(" ")
         )
     }
 }
@@ -411,7 +414,7 @@ mod tests {
     }
 
     #[test]
-    fn frame_draws_cyan_border_and_tile_backgrounds() {
+    fn frame_draws_muted_border_and_separated_tiles() {
         let diff = &DIFFICULTIES[0];
         let game = Game::new(diff);
         let mut buf = Vec::new();
@@ -419,6 +422,13 @@ mod tests {
         let raw = String::from_utf8(buf).unwrap();
         assert!(raw.contains('┌') && raw.contains('└') && raw.contains('│'), "border");
         assert!(raw.contains("\x1b[48;5;4m"), "hidden cells must be dark-blue tiles");
+        // Each tile is: bg code, fg code, one tile char, bg reset, fg reset,
+        // then a plain gap space — cells read as separate squares.
+        assert!(
+            raw.contains("\x1b[48;5;4m\x1b[39m \x1b[49m\x1b[39m "),
+            "tile must be one coloured char followed by a gap"
+        );
+        assert!(!raw.contains("\x1b[38;5;14m"), "cyan must be gone from the board");
     }
 
     #[test]
