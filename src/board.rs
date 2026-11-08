@@ -182,13 +182,22 @@ impl Board {
         ChordOutcome::Revealed
     }
 
-    /// Places all mines on random cells, excluding `(r, c)` so the first dig
-    /// is always safe.
+    /// Places all mines on random cells, excluding the whole 3x3 area around
+    /// `(r, c)` so the first dig always opens a region (classic behaviour).
+    /// On boards too small for a safe 3x3, falls back to excluding only the
+    /// dug cell.
     fn place_mines(&mut self, safe_r: usize, safe_c: usize) {
         let mut rng = rand::rng();
-        let mut candidates: Vec<usize> = (0..self.cells.len())
-            .filter(|&i| i != safe_r * self.cols + safe_c)
+        let safe_cell = safe_r * self.cols + safe_c;
+        let safe_zone: Vec<usize> = std::iter::once(safe_cell)
+            .chain(self.neighbours(safe_r, safe_c).map(|(r, c)| r * self.cols + c))
             .collect();
+        let mut candidates: Vec<usize> = (0..self.cells.len())
+            .filter(|i| !safe_zone.contains(i))
+            .collect();
+        if candidates.len() < self.mines {
+            candidates = (0..self.cells.len()).filter(|&i| i != safe_cell).collect();
+        }
         // Partial Fisher–Yates: pick `mines` distinct positions.
         let n = candidates.len();
         for i in 0..self.mines {
@@ -272,6 +281,23 @@ mod tests {
             .count();
         assert_eq!(mine_count, 10);
         assert!(b.mines_placed);
+    }
+
+    #[test]
+    fn first_dig_clears_a_3x3_area_and_opens_a_region() {
+        let mut b = Board::new(9, 9, 10);
+        b.dig(4, 4);
+        // No mine within one cell of the first dig…
+        for (nr, nc) in b.neighbours(4, 4) {
+            assert!(!b.cell(nr, nc).mine, "mine too close to first dig at {nr},{nc}");
+        }
+        // …so the dug cell is a zero cell and flood fill opened a region.
+        assert_eq!(b.cell(4, 4).adjacent, 0);
+        let revealed = (0..9)
+            .flat_map(|r| (0..9).map(move |c| (r, c)))
+            .filter(|&(r, c)| b.cell(r, c).revealed)
+            .count();
+        assert!(revealed > 1, "first dig should open more than one cell");
     }
 
     #[test]
