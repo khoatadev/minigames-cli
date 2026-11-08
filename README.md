@@ -4,12 +4,44 @@ Bộ sưu tập mini game chạy ngay trong terminal (`game-cli`), viết bằng
 
 Hiện có **Dò mìn (Minesweeper)** và **Phản xạ**; Caro và Rắn săn mồi đang được phát triển.
 
-## Quickstart
+## Cài đặt
 
-Yêu cầu Rust 1.85+ ([rustup](https://rustup.rs)).
+Chơi được trên **Linux, macOS và Windows** — code thuần Rust, không gọi API riêng của hệ điều hành nào, và CI build + test trên cả 3 nền tảng. Yêu cầu duy nhất là terminal hỗ trợ UTF-8: macOS dùng Terminal/iTerm2 đều được; trên Windows nên dùng **Windows Terminal** (conhost cổ điển có thể vẽ kém các ký tự `■ ⚑ ✸`).
+
+### Bước 1 — cài Rust và trình biên dịch C
+
+| Hệ điều hành | Cách cài |
+|--------------|----------|
+| Ubuntu / Debian | `sudo apt install -y build-essential curl` |
+| Fedora | `sudo dnf install -y gcc curl` |
+| Arch | `sudo pacman -S --needed base-devel curl` |
+| macOS | `xcode-select --install` (Command Line Tools) |
+| Windows | tải `rustup-init.exe` từ [rustup.rs](https://rustup.rs) — chọn toolchain MSVC, installer sẽ hướng dẫn cài Visual Studio Build Tools |
+
+Sau đó cài Rust trên Linux/macOS:
 
 ```bash
-cargo run --release
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+```
+
+(Windows: chạy `rustup-init.exe` là đủ.)
+
+### Bước 2 — cài game
+
+```bash
+git clone https://github.com/khoatadev/minigames-cli
+cd minigames-cli
+cargo install --path .
+```
+
+Lệnh `game-cli` sẽ nằm trong `~/.cargo/bin` (Linux/macOS) hoặc `%USERPROFILE%\.cargo\bin` (Windows) — rustup tự thêm vào PATH, mở terminal mới nếu chưa thấy.
+
+Chạy thử không cần cài: `cargo run --release`.
+
+## Quickstart
+
+```bash
+game-cli
 ```
 
 Menu chính hiện ra — chọn game bằng `↑`/`↓` và nhấn `Enter`.
