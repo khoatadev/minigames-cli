@@ -35,13 +35,14 @@ pub fn begin_frame(out: &mut impl Write) -> io::Result<()> {
 }
 
 /// Top-left corner `(x, y)` that centers a `content_w` x `content_h` block
-/// in the terminal. Clamps to 0 when the terminal is too small.
-pub fn center_offset(content_w: u16, content_h: u16) -> io::Result<(u16, u16)> {
-    let (cols, rows) = size()?;
-    Ok((
-        cols.saturating_sub(content_w) / 2,
-        rows.saturating_sub(content_h) / 2,
-    ))
+/// in a terminal of `term_cols` x `term_rows`. Pure so rendering stays
+/// testable without a TTY; callers fetch the real size via [`dims`].
+/// Clamps to 0 when the terminal is too small.
+pub fn center_offset(term_cols: u16, term_rows: u16, content_w: u16, content_h: u16) -> (u16, u16) {
+    (
+        term_cols.saturating_sub(content_w) / 2,
+        term_rows.saturating_sub(content_h) / 2,
+    )
 }
 
 /// Terminal size as `(cols, rows)`.

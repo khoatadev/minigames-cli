@@ -126,7 +126,15 @@ impl Game {
         }
     }
 
-    fn render(&self, out: &mut impl Write, diff: &Difficulty) -> io::Result<()> {
+    /// Draws one frame into `out`. Terminal dimensions are parameters so
+    /// rendering is testable without a TTY; the game loop passes real ones.
+    fn render(
+        &self,
+        out: &mut impl Write,
+        diff: &Difficulty,
+        term_cols: u16,
+        term_rows: u16,
+    ) -> io::Result<()> {
         term::begin_frame(out)?;
         // Board (incl. its frame) is centered; header and footer are centered
         // on the same vertical axis so everything lines up in the middle.
@@ -134,8 +142,7 @@ impl Game {
         let frame_w = self.board.cols as u16 * 2 + FRAME_PAD;
         let frame_h = self.board.rows as u16 + 2; // top + bottom border
         let frame_total = frame_h + 4; // header, blank, frame, blank, footer
-        let (x0, y0) = term::center_offset(frame_w, frame_total)?;
-        let (term_cols, _) = term::dims()?;
+        let (x0, y0) = term::center_offset(term_cols, term_rows, frame_w, frame_total);
         let mines_left = self.board.mines as isize - self.board.flags_placed() as isize;
 
         // Header
@@ -287,7 +294,8 @@ pub fn run(diff: &Difficulty) -> io::Result<()> {
     loop {
         let now = term::mmss(game.elapsed());
         if dirty || now != last_time {
-            game.render(&mut out, diff)?;
+            let (cols, rows) = term::dims()?;
+            game.render(&mut out, diff, cols, rows)?;
             last_time = now;
             dirty = false;
         }
@@ -311,7 +319,7 @@ mod tests {
 
     fn render_to_string(game: &Game, diff: &Difficulty) -> String {
         let mut buf = Vec::new();
-        game.render(&mut buf, diff).unwrap();
+        game.render(&mut buf, diff, 80, 24).unwrap();
         strip_ansi(String::from_utf8(buf).unwrap())
     }
 
@@ -412,7 +420,7 @@ mod tests {
         let diff = &DIFFICULTIES[0];
         let game = Game::new(diff);
         let mut buf = Vec::new();
-        game.render(&mut buf, diff).unwrap();
+        game.render(&mut buf, diff, 80, 24).unwrap();
         let raw = String::from_utf8(buf).unwrap();
         assert!(raw.contains('┌') && raw.contains('└') && raw.contains('│'), "border");
         // Hidden cells are muted grey ■ glyphs on the default background —
@@ -437,7 +445,7 @@ mod tests {
         game.cursor = mine_at;
         game.dig();
         let mut buf = Vec::new();
-        game.render(&mut buf, diff).unwrap();
+        game.render(&mut buf, diff, 80, 24).unwrap();
         let raw = String::from_utf8(buf).unwrap();
         assert!(raw.contains("\x1b[48;5;9m"), "exploded mine must be a solid red block");
         assert!(raw.contains("\x1b[38;5;9m✸"), "other mines must be red ✸ glyphs");

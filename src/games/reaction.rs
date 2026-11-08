@@ -69,7 +69,8 @@ fn play_round(out: &mut impl Write) -> io::Result<Outcome> {
         let left = s.time_left(now);
         let second = left.as_secs();
         if dirty || second != last_second {
-            render_play(out, &s, left)?;
+            let (cols, rows) = term::dims()?;
+            render_play(out, &s, left, cols, rows)?;
             last_second = second;
             dirty = false;
         }
@@ -96,7 +97,8 @@ fn play_round(out: &mut impl Write) -> io::Result<Outcome> {
         }
     }
 
-    render_summary(out, &s, ended_early)?;
+    let (cols, rows) = term::dims()?;
+    render_summary(out, &s, ended_early, cols, rows)?;
     loop {
         if let Some(crossterm::event::Event::Key(key)) = term::poll_event(term::POLL_MS)? {
             if key.kind != KeyEventKind::Press {
@@ -131,9 +133,16 @@ fn spawn_next(s: &mut Session, last_char: Option<char>) -> io::Result<()> {
     Ok(())
 }
 
-fn render_play(out: &mut impl Write, s: &Session, left: Duration) -> io::Result<()> {
+/// Draws one play frame. Terminal dimensions are parameters so rendering is
+/// testable without a TTY; the game loop passes real ones.
+fn render_play(
+    out: &mut impl Write,
+    s: &Session,
+    left: Duration,
+    cols: u16,
+    rows: u16,
+) -> io::Result<()> {
     term::begin_frame(out)?;
-    let (cols, rows) = term::dims()?;
 
     let best = match s.best_reaction {
         Some(d) => format!("{:.2}s   ", d.as_secs_f32()),
@@ -165,9 +174,14 @@ fn render_play(out: &mut impl Write, s: &Session, left: Duration) -> io::Result<
     out.flush()
 }
 
-fn render_summary(out: &mut impl Write, s: &Session, ended_early: bool) -> io::Result<()> {
+fn render_summary(
+    out: &mut impl Write,
+    s: &Session,
+    ended_early: bool,
+    cols: u16,
+    rows: u16,
+) -> io::Result<()> {
     term::begin_frame(out)?;
-    let (cols, rows) = term::dims()?;
 
     let title = if ended_early { "ĐÃ DỪNG VÁN" } else { "HẾT GIỜ!" };
     let score_color = match s.score {
@@ -228,13 +242,13 @@ mod tests {
 
     fn render_play_to_string(s: &Session, left: Duration) -> String {
         let mut buf = Vec::new();
-        render_play(&mut buf, s, left).unwrap();
+        render_play(&mut buf, s, left, 80, 24).unwrap();
         String::from_utf8(buf).unwrap()
     }
 
     fn render_summary_to_string(s: &Session, early: bool) -> String {
         let mut buf = Vec::new();
-        render_summary(&mut buf, s, early).unwrap();
+        render_summary(&mut buf, s, early, 80, 24).unwrap();
         strip_ansi(String::from_utf8(buf).unwrap())
     }
 
