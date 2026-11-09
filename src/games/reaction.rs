@@ -35,6 +35,24 @@ const PALETTE: [Color; 7] = [
     Color::White,
 ];
 
+/// Special characters mixed into the pool besides a–z and A–Z.
+const SPECIALS: [char; 9] = ['!', '?', '@', '#', '$', '%', '&', '*', '+'];
+/// Pool size: 26 lowercase + 26 uppercase + specials.
+const POOL_SIZE: u32 = 26 + 26 + SPECIALS.len() as u32;
+
+/// Uniformly picks one character from the pool: a–z, A–Z, or a special.
+fn pick_char(rng: &mut impl rand::Rng) -> char {
+    let roll = rng.random_range(0..POOL_SIZE);
+    match roll {
+        0..=25 => (b'a' + roll as u8) as char,
+        26..=51 => (b'A' + (roll - 26) as u8) as char,
+        n => SPECIALS[(n - 52) as usize],
+    }
+}
+
+/// Seconds of countdown before a round starts.
+const PREP_SECONDS: u64 = 3;
+
 enum Outcome {
     Replay,
     Quit,
@@ -52,6 +70,28 @@ pub fn run() -> io::Result<()> {
 
 /// Plays one 60-second round and its summary, then asks to replay or quit.
 fn play_round(out: &mut impl Write) -> io::Result<Outcome> {
+    // Countdown so the player can put their fingers on the home row first.
+    let prep_start = Instant::now();
+    let mut shown = None;
+    loop {
+        let elapsed = prep_start.elapsed();
+        if elapsed >= Duration::from_secs(PREP_SECONDS) {
+            break;
+        }
+        let remaining = PREP_SECONDS - elapsed.as_secs();
+        if Some(remaining) != shown {
+            let (cols, rows) = term::dims()?;
+            render_countdown(out, remaining, cols, rows)?;
+            shown = Some(remaining);
+        }
+        if let Some(crossterm::event::Event::Key(key)) = term::poll_event(term::POLL_MS)?
+            && key.kind == KeyEventKind::Press
+            && key.code == KeyCode::Esc
+        {
+            return Ok(Outcome::Quit); // cancelled before it began
+        }
+    }
+
     let t0 = Instant::now();
     let mut s = Session::new(t0);
     spawn_next(&mut s, None)?;
@@ -113,15 +153,15 @@ fn play_round(out: &mut impl Write) -> io::Result<Outcome> {
     }
 }
 
-/// Spawns a random letter in a random palette colour at a random position,
-/// avoiding the HUD row, the footer rows and an immediate repeat of
-/// `last_char`.
+/// Spawns a random character (a–z, A–Z or a special) in a random palette
+/// colour at a random position, avoiding the HUD row, the footer rows and an
+/// immediate repeat of `last_char`.
 fn spawn_next(s: &mut Session, last_char: Option<char>) -> io::Result<()> {
     let (cols, rows) = term::dims()?;
     let mut rng = rand::rng();
     let mut ch;
     loop {
-        ch = rng.random_range(b'a'..=b'z') as char;
+        ch = pick_char(&mut rng);
         if Some(ch) != last_char {
             break;
         }
@@ -131,6 +171,21 @@ fn spawn_next(s: &mut Session, last_char: Option<char>) -> io::Result<()> {
     let col = if cols > 4 { rng.random_range(1..cols - 2) } else { 1 };
     s.spawn_target(ch, row, col, color, Instant::now());
     Ok(())
+}
+
+/// Draws the pre-round countdown: a big number, one per second.
+fn render_countdown(out: &mut impl Write, seconds_left: u64, cols: u16, rows: u16) -> io::Result<()> {
+    term::begin_frame(out)?;
+    let label = vec![("Chuẩn bị...".to_string(), Color::DarkGrey)];
+    print_centered(out, (rows / 2).saturating_sub(2), &label, cols)?;
+    let number = vec![(format!("{seconds_left}"), Color::Yellow)];
+    print_centered(out, rows / 2, &number, cols)?;
+    let footer = vec![
+        ("Esc".to_string(), Color::Yellow),
+        (" hủy ván".to_string(), Color::DarkGrey),
+    ];
+    print_centered(out, rows.saturating_sub(1), &footer, cols)?;
+    out.flush()
 }
 
 /// Draws one play frame. Terminal dimensions are parameters so rendering is
@@ -166,7 +221,7 @@ fn render_play(
     }
 
     let footer = vec![
-        ("Gõ ký tự đang hiện trên màn hình — gõ sai -20 điểm   ".to_string(), Color::DarkGrey),
+        ("Gõ ký tự đang hiện — phân biệt HOA/thường và ký tự đặc biệt, sai -20 điểm   ".to_string(), Color::DarkGrey),
         ("Esc".to_string(), Color::Yellow),
         (" dừng ván".to_string(), Color::DarkGrey),
     ];
@@ -332,6 +387,31 @@ mod tests {
         let summary = render_summary_to_string(&s, true);
         assert!(summary.contains("ĐÃ DỪNG VÁN"));
         assert!(summary.contains("Đúng: 0"));
+    }
+
+    #[test]
+    fn pick_char_draws_from_the_full_pool() {
+        let mut rng = rand::rng();
+        let (mut lowercase, mut uppercase, mut special) = (false, false, false);
+        for _ in 0..2_000 {
+            match pick_char(&mut rng) {
+                'a'..='z' => lowercase = true,
+                'A'..='Z' => uppercase = true,
+                c if SPECIALS.contains(&c) => special = true,
+                other => panic!("unexpected character {other:?}"),
+            }
+        }
+        assert!(lowercase && uppercase && special, "pool must cover all three classes");
+    }
+
+    #[test]
+    fn countdown_shows_number_and_cancel_hint() {
+        let mut buf = Vec::new();
+        render_countdown(&mut buf, 2, 80, 24).unwrap();
+        let plain = strip_ansi(String::from_utf8(buf).unwrap());
+        assert!(plain.contains("Chuẩn bị"));
+        assert!(plain.contains('2'), "the remaining seconds must show");
+        assert!(plain.contains("hủy ván"));
     }
 
     #[test]

@@ -1,8 +1,9 @@
 //! Reaction game logic — pure, no I/O, fully unit-testable.
 //!
-//! A target letter sits on screen until the player presses the matching key.
-//! Points are awarded by reaction speed plus a combo bonus for consecutive
-//! hits; wrong keys cost points and reset the combo.
+//! A target character sits on screen until the player presses the exact
+//! matching key (case-sensitive). Points are awarded by reaction speed plus
+//! a combo bonus for consecutive hits; wrong keys cost points and reset the
+//! combo.
 
 use std::time::{Duration, Instant};
 
@@ -73,12 +74,14 @@ impl Session {
         self.target = Some(Target { ch, row, col, spawned_at: now, color });
     }
 
-    /// Judges one key press against the current target.
+    /// Judges one key press against the current target. Matching is exact —
+    /// uppercase targets need Shift and special characters must be typed as
+    /// displayed.
     pub fn press(&mut self, key: char, now: Instant) -> PressResult {
         let Some(t) = self.target else {
             return PressResult::Ignored;
         };
-        if key.to_ascii_lowercase() != t.ch {
+        if key != t.ch {
             self.misses += 1;
             self.score -= MISS_PENALTY;
             self.streak = 0;
@@ -169,10 +172,18 @@ mod tests {
     }
 
     #[test]
-    fn press_is_case_insensitive() {
+    fn press_matches_exactly_including_case() {
         let t0 = Instant::now();
-        let mut s = session_with_target('a', t0);
+        // Uppercase target requires the uppercase key.
+        let mut s = session_with_target('A', t0);
+        assert!(matches!(s.press('a', t0), PressResult::Wrong), "case matters");
+        s.spawn_target('A', 5, 10, 0, t0);
         assert!(matches!(s.press('A', t0), PressResult::Hit { .. }));
+        // Special characters match as-is.
+        let mut s = session_with_target('!', t0);
+        assert!(matches!(s.press('!', t0), PressResult::Hit { .. }));
+        s.spawn_target('#', 1, 1, 0, t0);
+        assert!(matches!(s.press('?', t0), PressResult::Wrong));
     }
 
     #[test]

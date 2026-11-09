@@ -64,12 +64,12 @@ Bàn cờ: ô chưa mở hiển thị `■` xám dịu, cờ `⚑` vàng, con tr
 
 ## Phản xạ — luật chơi
 
-Một chữ cái (a–z) hiện ở vị trí bất kỳ trên màn hình, mỗi lần xuất hiện mang một màu ngẫu nhiên (7 màu); gõ đúng chữ đó càng nhanh càng được nhiều điểm:
+Một ký tự xuất hiện ở vị trí bất kỳ trên màn hình — trong pool có **chữ thường a–z, chữ HOA A–Z và ký tự đặc biệt** `! ? @ # $ % & * +`, mỗi lần mang một màu ngẫu nhiên (7 màu). Gõ đúng **chính xác** ký tự đó (phân biệt hoa/thường, cần Shift) càng nhanh càng được nhiều điểm:
 
 - Đúng: **10–100 điểm** theo tốc độ phản xạ (nhanh nhất = 100)
 - Combo: mỗi lần đúng liên tiếp cộng thêm **+5 điểm** (tối đa +50)
 - Gõ sai: **−20 điểm** và mất combo
-- Ván dài **60 giây**; `Esc` dừng sớm; `R` chơi lại, `Esc` về menu
+- Ván dài **60 giây**, mở đầu bằng đếm ngược **3-2-1** (`Esc` hủy); `Esc` dừng sớm; `R` chơi lại, `Esc` về menu
 
 Quy ước chung: trong game, `Esc` là phím thoát về menu.
 
