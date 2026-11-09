@@ -7,7 +7,7 @@ use std::io::{self, Write};
 use std::time::{Duration, Instant};
 
 use crossterm::cursor::MoveTo;
-use crossterm::event::{Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
+use crossterm::event::{Event, KeyCode, KeyEvent, KeyEventKind};
 use crossterm::queue;
 use crossterm::style::{Color, Print, SetBackgroundColor, SetForegroundColor, Stylize};
 
@@ -316,6 +316,7 @@ pub fn run(diff: &Difficulty) -> io::Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crossterm::event::KeyModifiers;
 
     fn render_to_string(game: &Game, diff: &Difficulty) -> String {
         let mut buf = Vec::new();
