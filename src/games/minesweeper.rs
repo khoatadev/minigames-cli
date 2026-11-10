@@ -152,8 +152,8 @@ impl Game {
             _ => Color::Yellow,
         };
         let header = vec![
-            (format!("DÒ MÌN - {}   ", diff.name), Color::Reset),
-            ("Mìn: ".to_string(), Color::DarkGrey),
+            (format!("★ DÒ MÌN - {} ★   ", diff.name), Color::Reset),
+            ("⚑ Mìn: ".to_string(), Color::DarkGrey),
             (format!("{mines_left}   "), mines_color),
             ("Thời gian: ".to_string(), Color::DarkGrey),
             (term::mmss(self.elapsed()), Color::Reset),
@@ -182,15 +182,21 @@ impl Game {
         let status_row = y0 + 2 + self.board.rows as u16 + 2;
         let footer: Vec<(String, Color)> = match self.board.status() {
             Status::Lost => vec![
-                ("BẠN THUA!  ".to_string(), Color::Red),
-                ("R chơi lại, Esc về menu".to_string(), Color::DarkGrey),
+                ("💥 BẠN THUA! (Đã nổ mìn)   ".to_string(), Color::Red),
+                ("R".to_string(), Color::Yellow),
+                (" chơi lại   ".to_string(), Color::DarkGrey),
+                ("Esc".to_string(), Color::Yellow),
+                (" về menu".to_string(), Color::DarkGrey),
             ],
             Status::Won => vec![
                 (
-                    format!("BẠN THẮNG! Thời gian: {}   ", term::mmss(self.elapsed())),
+                    format!("🎉 BẠN THẮNG! Thời gian: {}   ", term::mmss(self.elapsed())),
                     Color::Green,
                 ),
-                ("R chơi lại, Esc về menu".to_string(), Color::DarkGrey),
+                ("R".to_string(), Color::Yellow),
+                (" chơi lại   ".to_string(), Color::DarkGrey),
+                ("Esc".to_string(), Color::Yellow),
+                (" về menu".to_string(), Color::DarkGrey),
             ],
             Status::InProgress => vec![
                 ("X".to_string(), Color::Yellow),
