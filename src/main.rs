@@ -3,6 +3,7 @@
 use std::io;
 
 mod board;
+mod caro;
 mod games;
 mod menu;
 mod reaction;
