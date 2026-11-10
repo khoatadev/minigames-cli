@@ -1,32 +1,104 @@
-# minigames-cli
+# 🎮 MINIGAMES-CLI
 
-Bộ sưu tập mini game chạy ngay trong terminal (`game-cli`), viết bằng Rust. Menu chính điều hướng bằng bàn phím, mỗi game khởi động tức thì.
+<p align="center">
+  <img src="https://img.shields.io/badge/Rust-2024_Edition-orange?logo=rust&style=flat-square" alt="Rust Edition 2024" />
+  <img src="https://img.shields.io/badge/Platform-Linux%20%7C%20macOS%20%7C%20Windows-blue?style=flat-square" alt="Cross-Platform" />
+  <img src="https://img.shields.io/badge/CI-Passing-brightgreen?style=flat-square" alt="CI Status" />
+  <img src="https://img.shields.io/badge/License-MIT-green?style=flat-square" alt="License MIT" />
+</p>
 
-Hiện có **Dò mìn (Minesweeper)** và **Phản xạ**; Caro và Rắn săn mồi đang được phát triển.
-
-## Cài đặt
-
-Chơi được trên **Linux, macOS và Windows** — code thuần Rust, không gọi API riêng của hệ điều hành nào, và CI build + test trên cả 3 nền tảng. Yêu cầu duy nhất là terminal hỗ trợ UTF-8: macOS dùng Terminal/iTerm2 đều được; trên Windows nên dùng **Windows Terminal** (conhost cổ điển có thể vẽ kém các ký tự `■ ⚑ ✸`).
-
-### Bước 1 — cài Rust và trình biên dịch C
-
-| Hệ điều hành | Cách cài |
-|--------------|----------|
-| Ubuntu / Debian | `sudo apt install -y build-essential curl` |
-| Fedora | `sudo dnf install -y gcc curl` |
-| Arch | `sudo pacman -S --needed base-devel curl` |
-| macOS | `xcode-select --install` (Command Line Tools) |
-| Windows | tải `rustup-init.exe` từ [rustup.rs](https://rustup.rs) — chọn toolchain MSVC, installer sẽ hướng dẫn cài Visual Studio Build Tools |
-
-Sau đó cài Rust trên Linux/macOS:
-
-```bash
-curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+```text
+  __  __ ___ _  _ ___   ___   _   __  __ ___ ___ 
+ |  \/  |_ _| \| |_ _| / __| /_\ |  \/  | __/ __|
+ | |\/| || || .` || | | (_ |/ _ \| |\/| | _|\__ \
+ |_|  |_|___|_|\_|___| \___/_/ \_\_|  |_|___|___/
 ```
 
-(Windows: chạy `rustup-init.exe` là đủ.)
+> **Bộ sưu tập mini game phong cách Modern Retro Arcade chạy trực tiếp trong terminal của bạn.**  
+> Viết bằng **Rust thuần** với hiệu năng cực đại, khởi động tức thì, không giật lag và không phụ thuộc thư viện TUI cồng kềnh.
 
-### Bước 2 — cài game
+---
+
+## 🌟 Tính năng nổi bật
+
+- ⚡ **Khởi động tức thì (Zero Latency):** Viết hoàn toàn bằng Rust trên nền tảng `crossterm`, tối ưu dựng hình từng frame mượt mà.
+- 🎨 **Giao diện Modern Retro Arcade:** Thiết kế căn giữa hoàn hảo, đóng khung bo góc (`╭─╮`), thanh HUD Arcade Dashboard và thẻ điểm tổng kết (Scorecard) vinh danh.
+- 🧩 **2 Game kinh điển đã hoàn thiện:**
+  - 💣 **Dò mìn (Minesweeper):** Thuật toán rải mìn an toàn nhát đào đầu (3x3), cơ chế mở nhanh (chord) chuẩn Minesweeper quốc tế, 3 cấp độ khó.
+  - ⚡ **Phản xạ (Speed Reaction):** Luyện gõ phím siêu tốc với pool ký tự đa dạng (chữ thường, chữ HOA, ký tự đặc biệt), hiệu ứng đếm ngược và hệ thống tính điểm kèm Combo Streak.
+- 🧱 **Kiến trúc tách bạch (Clean Architecture):** Tách biệt 100% logic trò chơi (`board.rs`, `reaction.rs`) khỏi phần hiển thị I/O, độ bao phủ kiểm thử đơn vị (Unit Tests) hoàn hảo.
+- 🌐 **Đa nền tảng:** Chạy mượt mà trên Linux, macOS và Windows (hỗ trợ tốt nhất trên Windows Terminal).
+
+---
+
+## 🖥️ Trải nghiệm giao diện (UI Showcase)
+
+### 1. Menu chính (Arcade Hub)
+```text
+       ╭──────────────────────────────────────────────────╮
+       │                ★ MINI GAMES ★                    │
+       ├──────────────────────────────────────────────────┤
+       │                                                  │
+       │   ▶ Dò mìn                                       │
+       │     Phản xạ                                      │
+       │     Caro                        (sắp ra mắt)     │
+       │     Rắn săn mồi                 (sắp ra mắt)     │
+       │                                                  │
+       ├──────────────────────────────────────────────────┤
+       │       ↑↓ chọn   Enter chơi   Q thoát             │
+       ╰──────────────────────────────────────────────────╯
+```
+
+### 2. Dò mìn (Minesweeper)
+```text
+           ★ DÒ MÌN - Dễ ★     ⚑ Mìn: 10     Thời gian: 00:24
+           ┌──────────────────┐
+           │ ■  ■  ■  ■  ■  ■ │
+           │ ■  1  1  1  ■  ■ │
+           │ ■  1     1  ■  ■ │
+           │ ■  1  1  2  ⚑  ■ │
+           │ ■  ■  ■  ■  ■  ■ │
+           └──────────────────┘
+    X đào   Z cắm/gỡ cờ   R chơi lại   Esc về menu
+```
+
+### 3. Thẻ điểm Phản xạ (Reaction Scorecard)
+```text
+       ╭──────────────────────────────────────────────────╮
+       │                   ★ HẾT GIỜ! ★                   │
+       ├──────────────────────────────────────────────────┤
+       │                                                  │
+       │   Xếp hạng phong độ:  ★ RANK S ★                 │
+       │   Điểm: 820                                      │
+       │   Đúng: 28   Sai: 1   Chuỗi dài nhất: 19         │
+       │   Phản xạ trung bình: 0.28s   Nhanh nhất: 0.16s  │
+       │                                                  │
+       ├──────────────────────────────────────────────────┤
+       │            R chơi lại   Esc về menu              │
+       ╰──────────────────────────────────────────────────╯
+```
+
+---
+
+## 🚀 Hướng dẫn cài đặt
+
+Chương trình hoạt động mượt mà trên **Linux, macOS và Windows**. Yêu cầu terminal hỗ trợ UTF-8 (khuyến nghị **Windows Terminal** trên Windows).
+
+### Bước 1: Chuẩn bị môi trường Rust
+
+Cài đặt trình biên dịch C và Rust:
+
+| Hệ điều hành | Cài đặt công cụ nền | Cài đặt Rust (rustup) |
+| :--- | :--- | :--- |
+| **Ubuntu / Debian** | `sudo apt install -y build-essential curl` | `curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \| sh` |
+| **Fedora** | `sudo dnf install -y gcc curl` | `curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \| sh` |
+| **Arch Linux** | `sudo pacman -S --needed base-devel curl` | `curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \| sh` |
+| **macOS** | `xcode-select --install` | `curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \| sh` |
+| **Windows** | Tải và chạy `rustup-init.exe` từ [rustup.rs](https://rustup.rs) (chọn MSVC toolchain) | *(Được cài tự động qua `rustup-init`)* |
+
+### Bước 2: Biên dịch và cài đặt game
+
+Clone repository và cài đặt trực tiếp vào thư mục bin của Cargo:
 
 ```bash
 git clone https://github.com/khoatadev/minigames-cli
@@ -34,62 +106,90 @@ cd minigames-cli
 cargo install --path .
 ```
 
-Lệnh `game-cli` sẽ nằm trong `~/.cargo/bin` (Linux/macOS) hoặc `%USERPROFILE%\.cargo\bin` (Windows) — rustup tự thêm vào PATH, mở terminal mới nếu chưa thấy.
+Sau khi cài đặt xong, bạn có thể gõ `game-cli` ở bất kỳ đâu trong terminal!
 
-Chạy thử không cần cài: `cargo run --release`.
+> [!TIP]
+> **Chạy thử ngay không cần cài đặt:**  
+> Bạn chỉ cần gõ `cargo run --release` ngay trong thư mục dự án.
 
-## Quickstart
+---
 
-```bash
-game-cli
-```
+## 🕹️ Hướng dẫn điều khiển & Gameplay
 
-Menu chính hiện ra — chọn game bằng `↑`/`↓` và nhấn `Enter`.
+### 💣 1. Dò mìn (Minesweeper)
 
-## Dò mìn — điều khiển
+| Phím bấm | Chức năng |
+| :---: | :--- |
+| `↑` `↓` `←` `→` | Di chuyển con trỏ chọn ô |
+| `X` | **Đào ô**. Nhấn trên ô số đã mở sẽ kích hoạt tính năng **Đào nhanh (Chord)** |
+| `Z` | Cắm hoặc gỡ cờ đánh dấu mìn (`⚑`) |
+| `R` | Chơi lại ván mới |
+| `Esc` | Quay về Menu chính |
 
-| Phím | Hành động |
-|------|-----------|
-| `←` `→` `↑` `↓` | Di chuyển ô chọn |
-| `X` | Đào ô — trên ô số đã mở: đào nhanh các ô kề |
-| `Z` | Cắm / gỡ cờ |
-| `R` | Chơi lại |
-| `Esc` | Về menu |
+#### Quy tắc đặc biệt:
+- **Khởi đầu luôn an toàn:** Nhát đào đầu tiên không bao giờ trúng mìn và tự động mở sạch một vùng an toàn `3x3` quanh vị trí đào.
+- **Đào nhanh (Chord):** Đứng trên ô số đã mở, nếu xung quanh đã cắm đủ số cờ tương ứng với số hiển thị, bấm `X` sẽ tự động mở tất cả các ô lân cận còn lại. *(Cảnh báo: Nếu bạn cắm cờ sai vị trí, mìn sẽ nổ ngay lập tức!)*
+- **3 Cấp độ thử thách:**
+  - **Dễ:** Bàn cờ `9x9` với `10` quả mìn.
+  - **Vừa:** Bàn cờ `16x16` với `40` quả mìn.
+  - **Khó:** Bàn cờ `30x16` với `99` quả mìn.
 
-Ba độ khó: Dễ 9x9 (10 mìn), Vừa 16x16 (40 mìn), Khó 30x16 (99 mìn). Nhát đào đầu luôn mở được một vùng: mìn chỉ được rải sau nhát đào đầu và không bao giờ nằm trong vùng 3x3 quanh nó (chuẩn Minesweeper cổ điển).
+---
 
-Bàn cờ: ô chưa mở hiển thị `■` xám dịu, cờ `⚑` vàng, con trỏ là ô nền trắng; thua thì ô nổ thành khối đỏ và các mìn còn lại hiện `✸` đỏ. Khung xám mờ bao quanh bàn cờ.
+### ⚡ 2. Phản xạ (Speed Typing Reaction)
 
-**Đào nhanh (chord):** đứng trên một ô số đã mở, nếu số cờ xung quanh đúng bằng số đó, nhấn `X` sẽ mở tất cả ô kề chưa mở (bỏ qua ô có cờ). Theo luật cổ điển: nếu cờ cắm sai và một ô kề không cờ là mìn — nổ.
+Một ký tự ngẫu nhiên sẽ xuất hiện trên màn hình kèm màu sắc ngẫu nhiên. Nhiệm vụ của bạn là gõ chính xác phím đó nhanh nhất có thể.
 
-## Phản xạ — luật chơi
+- **Pool ký tự:** Bao gồm chữ thường `a–z`, chữ HOA `A–Z` (yêu cầu gõ kèm `Shift`) và ký tự đặc biệt `! ? @ # $ % & * +`.
+- **Hệ thống tính điểm:**
+  - Gõ đúng: Nhận từ **10 đến 100 điểm** tỉ lệ nghịch với thời gian phản xạ (càng nhanh điểm càng cao).
+  - **Combo Streak:** Mỗi lần gõ đúng liên tiếp cộng thêm **+5 điểm** (tối đa cộng dồn +50 điểm/lần).
+  - Gõ sai: Bị trừ **−20 điểm** và lập tức đưa chuỗi combo về 0.
+- **Thời lượng:** Mỗi ván kéo dài **60 giây**, mở đầu bằng đồng hồ đếm ngược 3 giây sẵn sàng.
+- **Bảng xếp hạng (Rank):** Kết thúc ván, hệ thống sẽ đánh giá phong độ từ **Rank S** (≥800đ), **Rank A**, **Rank B**, **Rank C** đến **Rank D**.
 
-Một ký tự xuất hiện ở vị trí bất kỳ trên màn hình — trong pool có **chữ thường a–z, chữ HOA A–Z và ký tự đặc biệt** `! ? @ # $ % & * +`, mỗi lần mang một màu ngẫu nhiên (7 màu). Gõ đúng **chính xác** ký tự đó (phân biệt hoa/thường, cần Shift) càng nhanh càng được nhiều điểm:
+---
 
-- Đúng: **10–100 điểm** theo tốc độ phản xạ (nhanh nhất = 100)
-- Combo: mỗi lần đúng liên tiếp cộng thêm **+5 điểm** (tối đa +50)
-- Gõ sai: **−20 điểm** và mất combo
-- Ván dài **60 giây**, mở đầu bằng đếm ngược **3-2-1** (`Esc` hủy); `Esc` dừng sớm; `R` chơi lại, `Esc` về menu
+## 🛠️ Cấu trúc mã nguồn & Phát triển
 
-Quy ước chung: trong game, `Esc` là phím thoát về menu.
-
-## Phát triển
-
-```bash
-cargo test          # chạy unit test (logic bàn cờ + render)
-cargo clippy        # lint
-```
-
-Cấu trúc:
+Dự án áp dụng mô hình thiết kế phân tầng sạch sẽ:
 
 ```
 src/
-├── main.rs              # điểm vào, dựng terminal và gọi menu
-├── board.rs             # logic dò mìn (thuần, không I/O)
-├── menu.rs              # menu chính + chọn độ khó
-├── term.rs              # thiết lập terminal, poll phím
+├── main.rs                  # Điểm khởi động, kiểm tra TTY và thiết lập terminal guard
+├── term.rs                  # Quản lý Raw mode, Alternate Screen, tính toán căn giữa
+├── menu.rs                  # Menu chính, chọn độ khó, bộ khung Arcade Banner
+├── board.rs                 # [Pure Logic] Toàn bộ luật chơi & thuật toán Dò mìn (no I/O)
+├── reaction.rs              # [Pure Logic] Tính điểm, thời gian phản xạ & combo (no I/O)
 └── games/
-    └── minesweeper.rs   # màn hình game, điều khiển, đồng hồ
+    ├── mod.rs               # Module quản lý danh sách trò chơi
+    ├── minesweeper.rs       # Renderer UI và vòng lặp tương tác game Dò mìn
+    └── reaction.rs          # Renderer UI, đếm ngược & thẻ điểm game Phản xạ
 ```
 
-Thêm game mới: tạo module trong `src/games/`, viết hàm `run(&Difficulty) -> io::Result<()>`, rồi đăng ký vào `GAMES` trong `src/menu.rs`.
+### Chạy kiểm thử & Linter
+
+```bash
+# Chạy toàn bộ 45 unit tests
+cargo test
+
+# Kiểm tra code style và quy chuẩn Rust
+cargo clippy --all-targets
+```
+
+---
+
+## 🗺️ Lộ trình phát triển (Roadmap)
+
+- [x] Thiết kế giao diện **Modern Retro Arcade** toàn diện.
+- [x] Hoàn thiện game **Dò mìn (Minesweeper)** với cơ chế Chord.
+- [x] Hoàn thiện game **Phản xạ (Speed Typing)** với Scorecard & Rank.
+- [ ] 🎮 **Cờ Caro (Gomoku):** Chế độ 2 người chơi hoặc đấu với Bot AI cơ bản.
+- [ ] 🐍 **Rắn săn mồi (Snake Classic):** Lối chơi cổ điển với bảng điểm High Score.
+- [ ] 🏆 **Bảng xếp hạng cục bộ (Local Leaderboard):** Lưu lại kỷ lục người chơi vào file config.
+
+---
+
+## 📄 Bản quyền (License)
+
+Dự án được phát hành theo giấy phép [MIT License](LICENSE). Tự do sử dụng, chỉnh sửa và đóng góp!
