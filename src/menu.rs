@@ -5,7 +5,7 @@ use std::io::{self, Write};
 use crossterm::cursor::MoveTo;
 use crossterm::event::{Event, KeyCode, KeyEventKind};
 use crossterm::queue;
-use crossterm::style::{Color, Print, SetBackgroundColor, Stylize};
+use crossterm::style::{Color, Print, Stylize};
 
 use crate::games::minesweeper::{self, DIFFICULTIES};
 use crate::games::reaction;
@@ -28,6 +28,14 @@ const GAMES: [(&str, bool); 4] = [
     ("Caro", false),
     ("Rắn săn mồi", false),
 ];
+
+const BANNER: [&str; 4] = [
+    r#" __  __ ___ _  _ ___   ___   _   __  __ ___ ___ "#,
+    r#"|  \/  |_ _| \| |_ _| / __| /_\ |  \/  | __/ __|"#,
+    r#"| |\/| || || .` || | | (_ |/ _ \| |\/| | _|\__ \"#,
+    r#"|_|  |_|___|_|\_|___| \___/_/ \_\_|  |_|___|___/"#,
+];
+const BANNER_W: u16 = 48;
 
 pub fn run() -> io::Result<()> {
     let mut out = io::stdout();
@@ -69,7 +77,8 @@ fn select(
     let mut dirty = true;
     loop {
         if dirty {
-            render_list(out, title, entries, sel, footer)?;
+            let (cols, rows) = term::dims()?;
+            render_list(out, title, entries, sel, footer, cols, rows)?;
             dirty = false;
         }
         if let Some(Event::Key(key)) = term::poll_event(term::POLL_MS)? {
@@ -98,26 +107,143 @@ fn render_list(
     entries: &[MenuEntry],
     sel: usize,
     footer: &str,
+    cols: u16,
+    rows: u16,
 ) -> io::Result<()> {
     term::begin_frame(out)?;
-    queue!(out, MoveTo(2, 0), Print(title.with(Color::Cyan)))?;
-    for (i, entry) in entries.iter().enumerate() {
-        queue!(out, MoveTo(2, (i + 2) as u16))?;
-        let marker = if i == sel { "▶ " } else { "  " };
-        if i == sel {
-            queue!(out, SetBackgroundColor(Color::DarkGrey))?;
+
+    let show_banner = title == "MINI GAMES" && cols >= BANNER_W + 4 && rows >= 20;
+    let banner_h = if show_banner { BANNER.len() as u16 + 1 } else { 0 };
+
+    // Box dimensions
+    let box_w: u16 = 50.min(cols.saturating_sub(4)).max(34);
+    let inner_w = (box_w.saturating_sub(2)) as usize;
+    let box_h: u16 = entries.len() as u16 + 7;
+    let total_h = banner_h + box_h;
+
+    let start_y = rows.saturating_sub(total_h) / 2;
+    let mut cur_y = start_y;
+
+    // Draw ASCII banner if conditions met
+    if show_banner {
+        let banner_x = cols.saturating_sub(BANNER_W) / 2;
+        for line in &BANNER {
+            queue!(out, MoveTo(banner_x, cur_y), Print(line.with(Color::Cyan).bold()))?;
+            cur_y += 1;
         }
-        let color = if entry.enabled { Color::Reset } else { Color::DarkGrey };
-        queue!(out, Print(marker), Print(entry.label.clone().with(color)))?;
-        if i == sel {
-            queue!(out, SetBackgroundColor(Color::Reset))?;
-        }
-        if !entry.enabled {
-            queue!(out, Print("   (sắp ra mắt)".with(Color::DarkGrey)))?;
-        }
+        cur_y += 1; // blank separator
     }
-    let footer_row = (entries.len() + 3) as u16;
-    queue!(out, MoveTo(2, footer_row), Print(footer.with(Color::DarkGrey)))?;
+
+    let box_x = cols.saturating_sub(box_w) / 2;
+    let bar = "─".repeat(inner_w);
+
+    // Box top border
+    queue!(out, MoveTo(box_x, cur_y), Print(format!("╭{bar}╮").with(Color::DarkGrey)))?;
+    cur_y += 1;
+
+    // Box Title
+    let title_text = format!("★ {} ★", title);
+    let title_vis_len = title_text.chars().count();
+    let title_lpad = inner_w.saturating_sub(title_vis_len) / 2;
+    let title_rpad = inner_w.saturating_sub(title_vis_len + title_lpad);
+    queue!(
+        out,
+        MoveTo(box_x, cur_y),
+        Print("│".with(Color::DarkGrey)),
+        Print(" ".repeat(title_lpad)),
+        Print(title_text.with(Color::Yellow).bold()),
+        Print(" ".repeat(title_rpad)),
+        Print("│".with(Color::DarkGrey))
+    )?;
+    cur_y += 1;
+
+    // Header divider
+    queue!(out, MoveTo(box_x, cur_y), Print(format!("├{bar}┤").with(Color::DarkGrey)))?;
+    cur_y += 1;
+
+    // Blank row inside box
+    queue!(
+        out,
+        MoveTo(box_x, cur_y),
+        Print("│".with(Color::DarkGrey)),
+        Print(" ".repeat(inner_w)),
+        Print("│".with(Color::DarkGrey))
+    )?;
+    cur_y += 1;
+
+    // Entries
+    for (i, entry) in entries.iter().enumerate() {
+        let marker = if i == sel { "▶ " } else { "  " };
+        let disabled_tag = if !entry.enabled { "   (sắp ra mắt)" } else { "" };
+        let vis_len = 2 + 2 + entry.label.chars().count() + disabled_tag.chars().count();
+        let rpad = inner_w.saturating_sub(vis_len);
+
+        queue!(
+            out,
+            MoveTo(box_x, cur_y),
+            Print("│".with(Color::DarkGrey)),
+            Print("  ")
+        )?;
+
+        if i == sel {
+            queue!(
+                out,
+                Print(marker.with(Color::Yellow).bold()),
+                Print(entry.label.clone().with(Color::White).bold())
+            )?;
+        } else {
+            let color = if entry.enabled { Color::Reset } else { Color::DarkGrey };
+            queue!(
+                out,
+                Print(marker.with(Color::DarkGrey)),
+                Print(entry.label.clone().with(color))
+            )?;
+        }
+
+        if !entry.enabled {
+            queue!(out, Print(disabled_tag.with(Color::DarkGrey)))?;
+        }
+
+        queue!(
+            out,
+            Print(" ".repeat(rpad)),
+            Print("│".with(Color::DarkGrey))
+        )?;
+        cur_y += 1;
+    }
+
+    // Blank row inside box
+    queue!(
+        out,
+        MoveTo(box_x, cur_y),
+        Print("│".with(Color::DarkGrey)),
+        Print(" ".repeat(inner_w)),
+        Print("│".with(Color::DarkGrey))
+    )?;
+    cur_y += 1;
+
+    // Footer divider
+    queue!(out, MoveTo(box_x, cur_y), Print(format!("├{bar}┤").with(Color::DarkGrey)))?;
+    cur_y += 1;
+
+    // Footer text
+    let footer_vis_len = footer.chars().count();
+    let footer_lpad = inner_w.saturating_sub(footer_vis_len) / 2;
+    let footer_rpad = inner_w.saturating_sub(footer_vis_len + footer_lpad);
+    queue!(
+        out,
+        MoveTo(box_x, cur_y),
+        Print("│".with(Color::DarkGrey)),
+        Print(" ".repeat(footer_lpad)),
+        Print(footer.with(Color::DarkGrey)),
+        Print(" ".repeat(footer_rpad)),
+        Print("│".with(Color::DarkGrey))
+    )?;
+    cur_y += 1;
+
+    // Box bottom border
+    queue!(out, MoveTo(box_x, cur_y), Print(format!("╰{bar}╯").with(Color::DarkGrey)))?;
+
     out.flush()
 }
 
@@ -127,7 +253,7 @@ mod tests {
 
     fn render(entries: &[MenuEntry], sel: usize) -> String {
         let mut buf = Vec::new();
-        render_list(&mut buf, "MINI GAMES", entries, sel, "footer").unwrap();
+        render_list(&mut buf, "MINI GAMES", entries, sel, "footer", 80, 24).unwrap();
         strip_ansi(String::from_utf8(buf).unwrap())
     }
 
