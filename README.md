@@ -23,10 +23,11 @@
 
 - ⚡ **Khởi động tức thì (Zero Latency):** Viết hoàn toàn bằng Rust trên nền tảng `crossterm`, tối ưu dựng hình từng frame mượt mà.
 - 🎨 **Giao diện Modern Retro Arcade:** Thiết kế căn giữa hoàn hảo, đóng khung bo góc (`╭─╮`), thanh HUD Arcade Dashboard và thẻ điểm tổng kết (Scorecard) vinh danh.
-- 🧩 **2 Game kinh điển đã hoàn thiện:**
+- 🧩 **3 Game kinh điển đã hoàn thiện:**
   - 💣 **Dò mìn (Minesweeper):** Thuật toán rải mìn an toàn nhát đào đầu (3x3), cơ chế mở nhanh (chord) chuẩn Minesweeper quốc tế, 3 cấp độ khó.
   - ⚡ **Phản xạ (Speed Reaction):** Luyện gõ phím siêu tốc với pool ký tự đa dạng (chữ thường, chữ HOA, ký tự đặc biệt), hiệu ứng đếm ngược và hệ thống tính điểm kèm Combo Streak.
-- 🧱 **Kiến trúc tách bạch (Clean Architecture):** Tách biệt 100% logic trò chơi (`board.rs`, `reaction.rs`) khỏi phần hiển thị I/O, độ bao phủ kiểm thử đơn vị (Unit Tests) hoàn hảo.
+  - ⭕ **Cờ Caro (Gomoku 15x15):** Luật 5 quân liên tiếp, hỗ trợ cả 2 chế độ: Đấu với Bot AI thông minh (PvE) và Hai người chơi trên cùng máy (PvP).
+- 🧱 **Kiến trúc tách bạch (Clean Architecture):** Tách biệt 100% logic trò chơi (`board.rs`, `reaction.rs`, `caro.rs`) khỏi phần hiển thị I/O, độ bao phủ kiểm thử đơn vị (Unit Tests) hoàn hảo.
 - 🌐 **Đa nền tảng:** Chạy mượt mà trên Linux, macOS và Windows (hỗ trợ tốt nhất trên Windows Terminal).
 
 ---
@@ -41,7 +42,7 @@
        │                                                  │
        │   ▶ Dò mìn                                       │
        │     Phản xạ                                      │
-       │     Caro                        (sắp ra mắt)     │
+       │     Caro                                         │
        │     Rắn săn mồi                 (sắp ra mắt)     │
        │                                                  │
        ├──────────────────────────────────────────────────┤
@@ -49,7 +50,21 @@
        ╰──────────────────────────────────────────────────╯
 ```
 
-### 2. Dò mìn (Minesweeper)
+### 2. Cờ Caro (Gomoku 15x15)
+```text
+       ★ CỜ CARO - Đấu với Máy ★   Lượt: [X]   Nước: 12   Thời gian: 00:45
+       ┌──────────────────────────────┐
+       │ ·  ·  ·  ·  ·  ·  ·  ·  ·  · │
+       │ ·  ·  ·  ·  ·  ·  ·  ·  ·  · │
+       │ ·  ·  ✕  ◯  ✕  ·  ·  ·  ·  · │
+       │ ·  ·  ·  ✕  ◯  ◯  ·  ·  ·  · │
+       │ ·  ·  ·  ·  ✕  ·  ·  ·  ·  · │
+       │ ·  ·  ·  ·  ·  ·  ·  ·  ·  · │
+       └──────────────────────────────┘
+         ↑↓←→ di chuyển   Enter/Space/X đánh   R ván mới   Esc menu
+```
+
+### 3. Dò mìn (Minesweeper)
 ```text
            ★ DÒ MÌN - Dễ ★     ⚑ Mìn: 10     Thời gian: 00:24
            ┌──────────────────┐
@@ -62,7 +77,7 @@
     X đào   Z cắm/gỡ cờ   R chơi lại   Esc về menu
 ```
 
-### 3. Thẻ điểm Phản xạ (Reaction Scorecard)
+### 4. Thẻ điểm Phản xạ (Reaction Scorecard)
 ```text
        ╭──────────────────────────────────────────────────╮
        │                   ★ HẾT GIỜ! ★                   │
@@ -116,7 +131,25 @@ Sau khi cài đặt xong, bạn có thể gõ `game-cli` ở bất kỳ đâu tr
 
 ## 🕹️ Hướng dẫn điều khiển & Gameplay
 
-### 💣 1. Dò mìn (Minesweeper)
+### ⭕ 1. Cờ Caro (Gomoku 15x15)
+
+Trò chơi cờ Caro cổ điển trên bàn cờ chuẩn `15x15`. Bên nào tạo được đường thẳng gồm **5 quân liên tiếp** (ngang, dọc hoặc đường chéo) trước sẽ giành chiến thắng.
+
+| Phím bấm | Chức năng |
+| :---: | :--- |
+| `↑` `↓` `←` `→` hoặc `W` `A` `S` `D` | Di chuyển con trỏ trên bàn cờ |
+| `Enter` / `Space` / `X` | Đặt quân cờ tại vị trí con trỏ |
+| `R` | Bắt đầu ván mới (giữ nguyên chế độ) |
+| `Esc` | Quay về menu chọn chế độ / menu chính |
+
+- **2 Chế độ chơi:**
+  - **Đấu với Máy (PvE):** Người chơi cầm quân `✕` (đi trước) đấu với thuật toán Bot AI cầm quân `◯`. Bot sử dụng thuật toán Heuristic đánh giá thế cờ theo thời gian thực, biết chủ động chặn các thế cờ 3, 4 nguy hiểm và tận dụng cơ hội kết liễu trận đấu.
+  - **Hai người chơi (PvP):** Hai người luân phiên hạ cờ `✕` và `◯` trên cùng bàn phím.
+- **Hiệu ứng trực quan:** Tự động highlight nước cờ vừa đánh (màu xám) và làm sáng toàn bộ đường thắng 5 quân (màu xanh lá) khi ván đấu kết thúc.
+
+---
+
+### 💣 2. Dò mìn (Minesweeper)
 
 | Phím bấm | Chức năng |
 | :---: | :--- |
@@ -136,7 +169,7 @@ Sau khi cài đặt xong, bạn có thể gõ `game-cli` ở bất kỳ đâu tr
 
 ---
 
-### ⚡ 2. Phản xạ (Speed Typing Reaction)
+### ⚡ 3. Phản xạ (Speed Typing Reaction)
 
 Một ký tự ngẫu nhiên sẽ xuất hiện trên màn hình kèm màu sắc ngẫu nhiên. Nhiệm vụ của bạn là gõ chính xác phím đó nhanh nhất có thể.
 
@@ -158,19 +191,21 @@ Dự án áp dụng mô hình thiết kế phân tầng sạch sẽ:
 src/
 ├── main.rs                  # Điểm khởi động, kiểm tra TTY và thiết lập terminal guard
 ├── term.rs                  # Quản lý Raw mode, Alternate Screen, tính toán căn giữa
-├── menu.rs                  # Menu chính, chọn độ khó, bộ khung Arcade Banner
+├── menu.rs                  # Menu chính, chọn độ khó, chọn chế độ, Arcade Banner
 ├── board.rs                 # [Pure Logic] Toàn bộ luật chơi & thuật toán Dò mìn (no I/O)
 ├── reaction.rs              # [Pure Logic] Tính điểm, thời gian phản xạ & combo (no I/O)
+├── caro.rs                  # [Pure Logic] Bàn cờ 15x15, phân định thắng thua, Bot AI (no I/O)
 └── games/
     ├── mod.rs               # Module quản lý danh sách trò chơi
     ├── minesweeper.rs       # Renderer UI và vòng lặp tương tác game Dò mìn
-    └── reaction.rs          # Renderer UI, đếm ngược & thẻ điểm game Phản xạ
+    ├── reaction.rs          # Renderer UI, đếm ngược & thẻ điểm game Phản xạ
+    └── caro.rs              # Renderer UI và vòng lặp tương tác game Cờ Caro
 ```
 
 ### Chạy kiểm thử & Linter
 
 ```bash
-# Chạy toàn bộ 45 unit tests
+# Chạy toàn bộ 58 unit tests
 cargo test
 
 # Kiểm tra code style và quy chuẩn Rust
@@ -184,7 +219,7 @@ cargo clippy --all-targets
 - [x] Thiết kế giao diện **Modern Retro Arcade** toàn diện.
 - [x] Hoàn thiện game **Dò mìn (Minesweeper)** với cơ chế Chord.
 - [x] Hoàn thiện game **Phản xạ (Speed Typing)** với Scorecard & Rank.
-- [ ] 🎮 **Cờ Caro (Gomoku):** Chế độ 2 người chơi hoặc đấu với Bot AI cơ bản.
+- [x] 🎮 **Cờ Caro (Gomoku 15x15):** Chế độ 2 người chơi (PvP) và đấu với Bot AI (PvE).
 - [ ] 🐍 **Rắn săn mồi (Snake Classic):** Lối chơi cổ điển với bảng điểm High Score.
 - [ ] 🏆 **Bảng xếp hạng cục bộ (Local Leaderboard):** Lưu lại kỷ lục người chơi vào file config.
 
