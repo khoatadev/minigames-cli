@@ -173,18 +173,60 @@ fn spawn_next(s: &mut Session, last_char: Option<char>) -> io::Result<()> {
     Ok(())
 }
 
-/// Draws the pre-round countdown: a big number, one per second.
+/// Draws the pre-round countdown inside an arcade ready card.
 fn render_countdown(out: &mut impl Write, seconds_left: u64, cols: u16, rows: u16) -> io::Result<()> {
     term::begin_frame(out)?;
+
+    let box_w: u16 = 36.min(cols.saturating_sub(4)).max(28);
+    let inner_w = (box_w.saturating_sub(2)) as usize;
+    let box_h: u16 = 9;
+    let box_x = cols.saturating_sub(box_w) / 2;
+    let start_y = rows.saturating_sub(box_h) / 2;
+    let bar = "─".repeat(inner_w);
+
+    let mut cur_y = start_y;
+    // Top border
+    queue!(out, MoveTo(box_x, cur_y), Print(format!("╭{bar}╮").with(Color::DarkGrey)))?;
+    cur_y += 1;
+
+    // Title
+    let title_parts = vec![("★ SẴN SÀNG PHẢN XẠ ★".to_string(), Color::Cyan)];
+    print_box_row(out, box_x, cur_y, inner_w, &title_parts, true)?;
+    cur_y += 1;
+
+    // Divider
+    queue!(out, MoveTo(box_x, cur_y), Print(format!("├{bar}┤").with(Color::DarkGrey)))?;
+    cur_y += 1;
+
+    // Label: Chuẩn bị...
     let label = vec![("Chuẩn bị...".to_string(), Color::DarkGrey)];
-    print_centered(out, (rows / 2).saturating_sub(2), &label, cols)?;
+    print_box_row(out, box_x, cur_y, inner_w, &label, true)?;
+    cur_y += 1;
+
+    // Number
     let number = vec![(format!("{seconds_left}"), Color::Yellow)];
-    print_centered(out, rows / 2, &number, cols)?;
+    print_box_row(out, box_x, cur_y, inner_w, &number, true)?;
+    cur_y += 1;
+
+    // Blank
+    print_box_row(out, box_x, cur_y, inner_w, &[], true)?;
+    cur_y += 1;
+
+    // Divider
+    queue!(out, MoveTo(box_x, cur_y), Print(format!("├{bar}┤").with(Color::DarkGrey)))?;
+    cur_y += 1;
+
+    // Footer
     let footer = vec![
         ("Esc".to_string(), Color::Yellow),
         (" hủy ván".to_string(), Color::DarkGrey),
     ];
-    print_centered(out, rows.saturating_sub(1), &footer, cols)?;
+    print_box_row(out, box_x, cur_y, inner_w, &footer, true)?;
+    cur_y += 1;
+
+    // Bottom border
+    queue!(out, MoveTo(box_x, cur_y), Print(format!("╰{bar}╯").with(Color::DarkGrey)))?;
+
     out.flush()
 }
 
@@ -205,12 +247,12 @@ fn render_play(
     };
     let hud = vec![
         ("Điểm: ".to_string(), Color::DarkGrey),
-        (format!("{}   ", s.score), Color::Reset),
+        (format!("{}    ", s.score), Color::Reset),
         ("Chuỗi: ".to_string(), Color::DarkGrey),
-        (format!("{}   ", s.streak), Color::Reset),
+        (format!("{}    ", s.streak), Color::Yellow),
         ("Còn: ".to_string(), Color::DarkGrey),
         (term::mmss(left), Color::Reset),
-        ("   Nhanh nhất: ".to_string(), Color::DarkGrey),
+        ("    Nhanh nhất: ".to_string(), Color::DarkGrey),
         (best, Color::Reset),
     ];
     print_centered(out, 0, &hud, cols)?;
@@ -253,26 +295,123 @@ fn render_summary(
         None => "—".to_string(),
     };
 
-    let lines: Vec<Vec<(String, Color)>> = vec![
-        vec![(title.to_string(), Color::Cyan)],
-        vec![("Điểm: ".to_string(), Color::Reset)],
-        vec![(format!("{}", s.score), score_color)],
-        vec![(
-            format!(
-                "Đúng: {}   Sai: {}   Chuỗi dài nhất: {}",
-                s.hits, s.misses, s.max_streak
-            ),
-            Color::Reset,
-        )],
-        vec![(format!("Phản xạ trung bình: {average}   Nhanh nhất: {best}"), Color::Reset)],
-        vec![("R".to_string(), Color::Yellow), (" chơi lại   ".to_string(), Color::DarkGrey), ("Esc".to_string(), Color::Yellow), (" về menu".to_string(), Color::DarkGrey)],
-    ];
+    let rank = match s.score {
+        s if s >= 800 => ("★ RANK S ★", Color::Yellow),
+        s if s >= 500 => ("★ RANK A ★", Color::Cyan),
+        s if s >= 300 => ("RANK B", Color::Green),
+        s if s >= 100 => ("RANK C", Color::Blue),
+        _ => ("RANK D", Color::DarkGrey),
+    };
 
-    let start = rows.saturating_sub(lines.len() as u16 + 2) / 2;
-    for (i, parts) in lines.iter().enumerate() {
-        print_centered(out, start + i as u16, parts, cols)?;
-    }
+    let box_w: u16 = 52.min(cols.saturating_sub(4)).max(36);
+    let inner_w = (box_w.saturating_sub(2)) as usize;
+    let box_h: u16 = 12;
+    let box_x = cols.saturating_sub(box_w) / 2;
+    let start_y = rows.saturating_sub(box_h) / 2;
+    let bar = "─".repeat(inner_w);
+
+    let mut cur_y = start_y;
+    // Top border
+    queue!(out, MoveTo(box_x, cur_y), Print(format!("╭{bar}╮").with(Color::DarkGrey)))?;
+    cur_y += 1;
+
+    // Title
+    let title_parts = vec![(format!("★ {} ★", title), Color::Cyan)];
+    print_box_row(out, box_x, cur_y, inner_w, &title_parts, true)?;
+    cur_y += 1;
+
+    // Divider
+    queue!(out, MoveTo(box_x, cur_y), Print(format!("├{bar}┤").with(Color::DarkGrey)))?;
+    cur_y += 1;
+
+    // Blank
+    print_box_row(out, box_x, cur_y, inner_w, &[], true)?;
+    cur_y += 1;
+
+    // Rank
+    let rank_parts = vec![
+        ("Xếp hạng phong độ:  ".to_string(), Color::DarkGrey),
+        (rank.0.to_string(), rank.1),
+    ];
+    print_box_row(out, box_x, cur_y, inner_w, &rank_parts, false)?;
+    cur_y += 1;
+
+    // Score
+    let score_parts = vec![
+        ("Điểm: ".to_string(), Color::Reset),
+        (format!("{}", s.score), score_color),
+    ];
+    print_box_row(out, box_x, cur_y, inner_w, &score_parts, false)?;
+    cur_y += 1;
+
+    // Hits / Misses / Streak
+    let stats1_parts = vec![(
+        format!(
+            "Đúng: {}   Sai: {}   Chuỗi dài nhất: {}",
+            s.hits, s.misses, s.max_streak
+        ),
+        Color::Reset,
+    )];
+    print_box_row(out, box_x, cur_y, inner_w, &stats1_parts, false)?;
+    cur_y += 1;
+
+    // Average / Best reaction
+    let stats2_parts = vec![(
+        format!("Phản xạ trung bình: {average}   Nhanh nhất: {best}"),
+        Color::Reset,
+    )];
+    print_box_row(out, box_x, cur_y, inner_w, &stats2_parts, false)?;
+    cur_y += 1;
+
+    // Blank
+    print_box_row(out, box_x, cur_y, inner_w, &[], true)?;
+    cur_y += 1;
+
+    // Divider
+    queue!(out, MoveTo(box_x, cur_y), Print(format!("├{bar}┤").with(Color::DarkGrey)))?;
+    cur_y += 1;
+
+    // Controls
+    let controls = vec![
+        ("R".to_string(), Color::Yellow),
+        (" chơi lại   ".to_string(), Color::DarkGrey),
+        ("Esc".to_string(), Color::Yellow),
+        (" về menu".to_string(), Color::DarkGrey),
+    ];
+    print_box_row(out, box_x, cur_y, inner_w, &controls, true)?;
+    cur_y += 1;
+
+    // Bottom border
+    queue!(out, MoveTo(box_x, cur_y), Print(format!("╰{bar}╯").with(Color::DarkGrey)))?;
+
     out.flush()
+}
+
+/// Helper that prints a framed row within a bordered box.
+fn print_box_row(
+    out: &mut impl Write,
+    box_x: u16,
+    y: u16,
+    inner_w: usize,
+    parts: &[(String, Color)],
+    centered: bool,
+) -> io::Result<()> {
+    let vis_len: usize = parts.iter().map(|(s, _)| s.chars().count()).sum();
+    let (lpad, rpad) = if centered {
+        let left = inner_w.saturating_sub(vis_len) / 2;
+        (left, inner_w.saturating_sub(vis_len + left))
+    } else {
+        let left = 2.min(inner_w.saturating_sub(vis_len));
+        (left, inner_w.saturating_sub(vis_len + left))
+    };
+
+    queue!(out, MoveTo(box_x, y), Print("│".with(Color::DarkGrey)))?;
+    queue!(out, Print(" ".repeat(lpad)))?;
+    for (text, color) in parts {
+        queue!(out, Print(text.clone().with(*color)))?;
+    }
+    queue!(out, Print(" ".repeat(rpad)), Print("│".with(Color::DarkGrey)))?;
+    Ok(())
 }
 
 /// Prints styled text segments on one row, centered horizontally in a
