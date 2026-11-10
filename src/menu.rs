@@ -7,6 +7,7 @@ use crossterm::event::{Event, KeyCode, KeyEventKind};
 use crossterm::queue;
 use crossterm::style::{Color, Print, Stylize};
 
+use crate::games::caro::{self, GameMode};
 use crate::games::minesweeper::{self, DIFFICULTIES};
 use crate::games::reaction;
 use crate::term;
@@ -25,7 +26,7 @@ impl MenuEntry {
 const GAMES: [(&str, bool); 4] = [
     ("Dò mìn", true),
     ("Phản xạ", true),
-    ("Caro", false),
+    ("Caro", true),
     ("Rắn săn mồi", false),
 ];
 
@@ -60,6 +61,23 @@ pub fn run() -> io::Result<()> {
                 }
             }
             Some(1) => reaction::run()?,
+            Some(2) => {
+                let modes: Vec<MenuEntry> = vec![
+                    MenuEntry::new("Đấu với Máy (PvE)", true),
+                    MenuEntry::new("Hai người chơi (PvP)", true),
+                    MenuEntry::new("← Về menu", true),
+                ];
+                match select(
+                    &mut out,
+                    "CỜ CARO — chọn chế độ",
+                    &modes,
+                    "↑↓ chọn   Enter chơi   Esc về menu",
+                )? {
+                    Some(0) => caro::run(GameMode::PvE)?,
+                    Some(1) => caro::run(GameMode::PvP)?,
+                    _ => continue,
+                }
+            }
             _ => return Ok(()),
         }
     }
@@ -304,6 +322,21 @@ mod tests {
         let frame = render(&diffs, 0);
         assert!(frame.contains("9x9, 10 mìn"));
         assert!(frame.contains("30x16, 99 mìn"));
+        assert!(frame.contains("← Về menu"));
+    }
+
+    #[test]
+    fn caro_mode_menu_shows_modes_and_back_row() {
+        let modes: Vec<MenuEntry> = vec![
+            MenuEntry::new("Đấu với Máy (PvE)", true),
+            MenuEntry::new("Hai người chơi (PvP)", true),
+            MenuEntry::new("← Về menu", true),
+        ];
+        let mut buf = Vec::new();
+        render_list(&mut buf, "CỜ CARO — chọn chế độ", &modes, 0, "footer", 80, 24).unwrap();
+        let frame = strip_ansi(String::from_utf8(buf).unwrap());
+        assert!(frame.contains("Đấu với Máy (PvE)"));
+        assert!(frame.contains("Hai người chơi (PvP)"));
         assert!(frame.contains("← Về menu"));
     }
 }

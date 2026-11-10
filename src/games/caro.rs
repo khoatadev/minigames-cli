@@ -96,14 +96,13 @@ impl CaroGame {
         if self.mode == GameMode::PvE
             && self.board.turn() == Player::O
             && self.board.status() == GameStatus::InProgress
+            && let Some((r, c)) = self.board.find_best_move()
         {
-            if let Some((r, c)) = self.board.find_best_move() {
-                self.board.place(r, c);
-                if self.board.status() != GameStatus::InProgress {
-                    self.ended = Some(Instant::now());
-                }
-                return true;
+            self.board.place(r, c);
+            if self.board.status() != GameStatus::InProgress {
+                self.ended = Some(Instant::now());
             }
+            return true;
         }
         false
     }
@@ -210,7 +209,7 @@ impl CaroGame {
         let is_win = self
             .board
             .winning_line()
-            .map_or(false, |line| line.contains(&(r, c)));
+            .is_some_and(|line| line.contains(&(r, c)));
         let is_last = self.board.last_move() == Some((r, c));
 
         let (glyph, default_fg) = match cell {
